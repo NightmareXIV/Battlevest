@@ -1,0 +1,12 @@
+{
+    "Author": "NightmareXIV",
+    "Name": "Battlevest",
+    "InternalName": "Battlevest",
+    "Description": "",
+    "ApplicableVersion": "any",
+    "Punchline": "Battle LeveQuest Helper",
+    "RepoUrl": "https://github.com/NightmareXIV/Battlevest",
+    "AcceptsFeedback": false,
+    "IconUrl": "",
+    "DalamudApiLevel": 10
+}
