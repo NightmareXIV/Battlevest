@@ -10,7 +10,6 @@ using System.Windows.Forms;
 namespace Battlevest.Data;
 public class Config : IEzConfig
 {
-    public bool Enabled = false;
     public List<LevePlan> Plans = [];
     public LimitedKeys Key = LimitedKeys.Digit_1;
 }

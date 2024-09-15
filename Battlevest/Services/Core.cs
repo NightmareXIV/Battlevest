@@ -16,6 +16,7 @@ using Action = System.Action;
 namespace Battlevest.Services;
 public unsafe class Core
 {
+    public bool Enabled = false;
     public LevePlan Selected = null;
     private Core()
     {
@@ -24,7 +25,7 @@ public unsafe class Core
 
     public void OnUpdate()
     {
-        if(!C.Enabled) return;
+        if(!Enabled) return;
         if(!IsScreenReady())
         {
             S.TextAdvanceIPC.Stop();

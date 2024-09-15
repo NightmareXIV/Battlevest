@@ -1,4 +1,5 @@
 ﻿using ECommons.ExcelServices;
+using Lumina.Excel.GeneratedSheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,6 +18,19 @@ public class LevePlan
 
     public string GetName()
     {
-        return $"{ExcelTerritoryHelper.GetName(this.Territory)} - {this.NpcName} - {LeveList.Count} leves";
+        string text;
+        if(LeveList.Count == 0)
+        {
+            text = "No quests selected";
+        }
+        else if(LeveList.Count < 3)
+        {
+            text = LeveList.Select(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x)?.Name.ExtractText() ?? "...").Print(", ");
+        }
+        else
+        {
+            text = LeveList[0..1].Select(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x)?.Name.ExtractText() ?? "...").Print(", ") + $" and {LeveList.Count - 2} more";
+        }
+        return $"{ExcelTerritoryHelper.GetName(this.Territory)} - {this.NpcName} - {text}";
     }
 }

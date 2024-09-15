@@ -4,20 +4,23 @@ using ECommons.Automation;
 using ECommons.Automation.UIInput;
 using ECommons.GameFunctions;
 using ECommons.GameHelpers;
+using ECommons.Interop;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Battlevest;
 public unsafe class Utils
 {
+    public static void Stop()
+    {
+        S.Core.Enabled = false;
+        S.TaskManager.Abort();
+        S.TextAdvanceIPC.Stop();
+    }
+
     public static bool SelectBattleLeve()
     {
         if(TryGetAddonMaster<AddonMaster.SelectString>("SelectString", out var m) && m.IsAddonReady)
@@ -71,7 +74,7 @@ public unsafe class Utils
     public static void HandleCombat(bool forceMount, out string status)
     {
         status = "Nothing...";
-        if(IsOccupied())
+        if(IsOccupied() || Svc.Condition[ConditionFlag.Casting])
         {
             return;
         }
@@ -80,7 +83,7 @@ public unsafe class Utils
         combatTarget ??= Svc.Objects.OfType<IBattleNpc>().OrderBy(Player.DistanceTo).FirstOrDefault(x => !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244);
         if(combatTarget != null && combatTarget.IsTargetable)
         {
-            if(Player.DistanceTo(combatTarget) < 20f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -5f : 0f) && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -1f : 0f)) < 3f)
+            if(Player.DistanceTo(combatTarget) < 20f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -5f : 0f) && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -2f : 0f)) < 10f)
             {
                 if(Svc.Targets.Target != combatTarget) Svc.Targets.Target = combatTarget;
                 S.TextAdvanceIPC.Stop();
@@ -89,6 +92,13 @@ public unsafe class Utils
                     if(EzThrottler.Throttle("Dismount", 1000))
                     {
                         Chat.Instance.ExecuteCommand("/generalaction \"Dismount\"");
+                    }
+                }
+                else
+                {
+                    if(!Player.IsAnimationLocked && AgentMap.Instance()->IsPlayerMoving == 0 && C.Key != LimitedKeys.None && EzThrottler.Throttle("Keypress"))
+                    {
+                        WindowsKeypress.SendKeypress(C.Key);
                     }
                 }
                 EzThrottler.Throttle("TAPath", 1000, true);
@@ -115,11 +125,11 @@ public unsafe class Utils
             {
                 var mark = marks.Last();
                 var dst = Player.DistanceTo(new Vector2(mark.X, mark.Z));
-                if(dst > 10f)
+                if(dst > 20f)
                 {
                     S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
                     {
-                        Mount = forceMount || dst > 30f,
+                        Mount = forceMount || dst > 40f,
                         Fly = false,
                         NoInteract = true,
                         Position = new(mark.X, mark.Y, mark.Z)

@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Battlevest.Gui;
 public class StatusWindow : Window
 {
-    public StatusWindow() : base("Battlevest Avtice", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize)
+    public StatusWindow() : base("Battlevest Active", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize)
     {
         this.IsOpen = true;
         this.RespectCloseHotkey = false;
@@ -20,9 +20,7 @@ public class StatusWindow : Window
     {
         if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Stop, "Stop"))
         {
-            C.Enabled = false;
-            S.TaskManager.Abort();
-            S.TextAdvanceIPC.Stop();
+            Utils.Stop();
         }
         ImGui.SameLine();
         if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Cog, "Config"))
@@ -35,6 +33,6 @@ public class StatusWindow : Window
 
     public override bool DrawConditions()
     {
-        return C.Enabled;
+        return S.Core.Enabled;
     }
 }
