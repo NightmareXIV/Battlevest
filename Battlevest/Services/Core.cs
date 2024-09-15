@@ -3,6 +3,7 @@ using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.Automation;
 using ECommons.Automation.NeoTaskManager.Tasks;
 using ECommons.EzEventManager;
+using ECommons.EzSharedDataManager;
 using ECommons.GameHelpers;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
@@ -28,14 +29,23 @@ public unsafe class Core
     };
     bool ExternalControl = false;
 
+    public void RelinquishExternalControl()
+    {
+        ExternalControl = false;
+        S.TextAdvanceIPC.DisableExternalControl(Svc.PluginInterface.InternalName);
+        if(EzSharedData.TryGet<HashSet<string>>("YesAlready.StopRequests", out var sr))
+        {
+            sr.Remove(Svc.PluginInterface.InternalName);
+        }
+    }
+
     public void OnUpdate()
     {
         if(!Enabled)
         {
             if(ExternalControl)
             {
-                ExternalControl = false;
-                S.TextAdvanceIPC.DisableExternalControl(Svc.PluginInterface.InternalName);
+                RelinquishExternalControl();
             }
             return;
         }
@@ -43,6 +53,10 @@ public unsafe class Core
         if(!S.TextAdvanceIPC.IsInExternalControl())
         {
             S.TextAdvanceIPC.EnableExternalControl(Svc.PluginInterface.InternalName, ExternalTerritoryConfig);
+        }
+        if(EzSharedData.TryGet<HashSet<string>>("YesAlready.StopRequests", out var sr))
+        {
+            sr.Add(Svc.PluginInterface.InternalName);
         }
         if(!IsScreenReady())
         {

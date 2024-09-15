@@ -21,6 +21,7 @@ public unsafe class MainWindow : ConfigWindow
 
     public override void Draw()
     {
+        ImGuiEx.LineCentered(() => ImGuiEx.Text(EColor.RedBright, "Alpha version"));
         PatreonBanner.DrawRight();
         ImGuiEx.EzTabBar("", PatreonBanner.Text,
             ("Options", DrawOptions, null, true),
@@ -54,6 +55,10 @@ public unsafe class MainWindow : ConfigWindow
         }
         else
         {
+            if(Player.TerritoryIntendedUse == TerritoryIntendedUseEnum.City_Area)
+            {
+                ImGuiEx.Text(EColor.RedBright, "City leves are unsupported.");
+            }
             ImGuiEx.InputWithRightButtonsArea(() =>
             {
                 if(ImGui.BeginCombo("##leveselect", Selected?.GetName() ?? "No plan selected"))
@@ -76,7 +81,7 @@ public unsafe class MainWindow : ConfigWindow
                 }
             }, () =>
             {
-                if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Plus, "Add from target", Svc.Targets.Target?.ObjectKind == ObjectKind.EventNpc))
+                if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Plus, "Add from target", Svc.Targets.Target?.ObjectKind == ObjectKind.EventNpc) && Player.TerritoryIntendedUse != TerritoryIntendedUseEnum.City_Area)
                 {
                     var plan = new LevePlan()
                     {
@@ -87,17 +92,18 @@ public unsafe class MainWindow : ConfigWindow
                     C.Plans.Add(plan);
                     Selected = plan;
                 }
+                ImGuiEx.Tooltip("To create plan, target levemete and press this button.");
                 if(Selected != null)
                 {
                     ImGui.SameLine();
                     if(ImGuiEx.IconButton(FontAwesomeIcon.Trash, enabled: ImGuiEx.Ctrl))
                     {
+                        Selected = null;
                         new TickScheduler(() => C.Plans.Remove(Selected));
                     }
                     ImGuiEx.Tooltip("Hold CTRL and click to delete");
                 }
             });
-
             if(Selected != null)
             {
                 ImGuiEx.TextWrapped(Selected.GetName());

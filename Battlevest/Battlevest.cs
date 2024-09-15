@@ -20,6 +20,7 @@ public class Battlevest : IDalamudPlugin
 
     public void Dispose()
     {
+        S.Core.RelinquishExternalControl();
         ECommonsMain.Dispose();
     }
 }
