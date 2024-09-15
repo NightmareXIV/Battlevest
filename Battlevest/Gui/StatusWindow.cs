@@ -11,9 +11,9 @@ public class StatusWindow : Window
 {
     public StatusWindow() : base("Battlevest Active", ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.AlwaysAutoResize)
     {
-        this.IsOpen = true;
-        this.RespectCloseHotkey = false;
-        this.ShowCloseButton = false;
+        IsOpen = true;
+        RespectCloseHotkey = false;
+        ShowCloseButton = false;
     }
 
     public override void Draw()

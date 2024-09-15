@@ -22,12 +22,12 @@ public unsafe class Core
         new EzFrameworkUpdate(OnUpdate);
     }
 
-    ExternalTerritoryConfig ExternalTerritoryConfig = new()
+    private ExternalTerritoryConfig ExternalTerritoryConfig = new()
     {
         EnableAutoInteract = false,
         EnableTalkSkip = true,
     };
-    bool ExternalControl = false;
+    private bool ExternalControl = false;
 
     public void RelinquishExternalControl()
     {
@@ -105,7 +105,7 @@ public unsafe class Core
                         S.TaskManager.EnqueueTask(NeoTasks.ApproachObjectViaAutomove(npc, 6f));
                         S.TaskManager.EnqueueTask(NeoTasks.InteractWithObject(npc));
                         S.TaskManager.Enqueue(Utils.SelectBattleLeve);
-                        for(int i = 0; i < 10; i++)
+                        for(var i = 0; i < 10; i++)
                         {
                             S.TaskManager.Enqueue(() =>
                             {

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Battlevest.Services;
 public class CommandManager
-{ 
+{
     private CommandManager()
     {
         EzCmd.Add("/battlevest", EzConfigGui.Open, "Open configuration");

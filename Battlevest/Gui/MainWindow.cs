@@ -12,7 +12,7 @@ using Lumina.Excel.GeneratedSheets;
 namespace Battlevest.Gui;
 public unsafe class MainWindow : ConfigWindow
 {
-    ref LevePlan Selected => ref S.Core.Selected;
+    private ref LevePlan Selected => ref S.Core.Selected;
     public MainWindow()
     {
         EzConfigGui.Init(this);
@@ -31,7 +31,7 @@ public unsafe class MainWindow : ConfigWindow
             );
     }
 
-    void DrawOptions()
+    private void DrawOptions()
     {
         ImGuiEx.Text("Requirements:");
         ImGuiEx.TextWrapped("- TextAdvance installed, enabled and \"Navigation\" enabled it it's options");
@@ -44,7 +44,7 @@ public unsafe class MainWindow : ConfigWindow
         ImGuiEx.EnumCombo("Key to spam for attack", ref C.Key);
     }
 
-    void DrawPlans()
+    private void DrawPlans()
     {
         if(S.Core.Enabled)
         {
@@ -100,8 +100,13 @@ public unsafe class MainWindow : ConfigWindow
                     ImGui.SameLine();
                     if(ImGuiEx.IconButton(FontAwesomeIcon.Trash, enabled: ImGuiEx.Ctrl))
                     {
-                        new TickScheduler(() => C.Plans.Remove(Selected));
-                        Selected = null;
+                        new TickScheduler(
+                            () =>
+                            {
+                                C.Plans.Remove(Selected);
+                                Selected = null;
+                            }
+                            );
                     }
                     ImGuiEx.Tooltip("Hold CTRL and click to delete");
                 }
@@ -145,7 +150,7 @@ public unsafe class MainWindow : ConfigWindow
         }
     }
 
-    void DrawDebug()
+    private void DrawDebug()
     {
         if(ImGui.CollapsingHeader("Debug leves"))
         {

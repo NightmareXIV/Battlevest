@@ -32,6 +32,6 @@ public class LevePlan
         {
             text = LeveList[0..1].Select(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x)?.Name.ExtractText() ?? "...").Print(", ") + $" and {LeveList.Count - 2} more";
         }
-        return $"{ExcelTerritoryHelper.GetName(this.Territory)} - {this.NpcName} - {text}";
+        return $"{ExcelTerritoryHelper.GetName(Territory)} - {NpcName} - {text}";
     }
 }

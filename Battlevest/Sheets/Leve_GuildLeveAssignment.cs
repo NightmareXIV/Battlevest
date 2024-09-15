@@ -1,5 +1,5 @@
-﻿using Lumina.Excel.CustomSheets;
-using Lumina.Excel;
+﻿using Lumina.Excel;
+using Lumina.Excel.CustomSheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;

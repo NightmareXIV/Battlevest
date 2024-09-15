@@ -29,7 +29,7 @@ public unsafe class GuildLeve : AddonMasterBase<AddonGuildLeve>
         get
         {
             var ret = new List<Levequest>();
-            for(int i = 0; i < NumEntries; i++)
+            for(var i = 0; i < NumEntries; i++)
             {
                 var leveName = Addon->AtkValues[626 + i * 2];
                 var leveLevel = Addon->AtkValues[627 + i * 2];
@@ -61,7 +61,7 @@ public unsafe class GuildLeve : AddonMasterBase<AddonGuildLeve>
 
         public void Select()
         {
-            var quest = Svc.Data.GetExcelSheet<Leve>().FirstOrDefault(x => x.Name.ExtractText() == this.Name);
+            var quest = Svc.Data.GetExcelSheet<Leve>().FirstOrDefault(x => x.Name.ExtractText() == Name);
             if(quest == null)
             {
                 PluginLog.Error($"Failed to select levequest, requested name not found: {Name}");

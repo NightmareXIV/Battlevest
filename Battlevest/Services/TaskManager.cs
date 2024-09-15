@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Battlevest.Services;
 public class TaskManager : ECommons.Automation.NeoTaskManager.TaskManager
 {
-    private TaskManager() : base(new(showDebug:true, abortOnTimeout:true))
+    private TaskManager() : base(new(showDebug: true, abortOnTimeout: true))
     {
     }
 }
