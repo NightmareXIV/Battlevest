@@ -1,4 +1,5 @@
-﻿using Battlevest.Sheets;
+﻿using Battlevest.Data;
+using Battlevest.Sheets;
 using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.Automation;
 using ECommons.Automation.UIInput;
@@ -54,7 +55,7 @@ public unsafe class Utils
 
     public static bool HandleYesno()
     {
-        if(TryGetAddonMaster<AddonMaster.SelectYesno>("SelectYesno", out var m))
+        if(TryGetAddonMaster<AddonMaster.SelectYesno>("SelectYesno", out var m) && m.IsAddonReady)
         {
             if(m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.ExtractText())
                 ||
@@ -71,16 +72,20 @@ public unsafe class Utils
         return false;
     }
 
-    public static void HandleCombat(bool forceMount, out string status)
+    public static void HandleCombat(bool forceMount, LevePlan plan)
     {
-        status = "Nothing...";
         if(IsOccupied() || Svc.Condition[ConditionFlag.Casting])
         {
             return;
         }
         var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492).OrderBy(x => Player.DistanceTo(new Vector3(x.X, x.Y, x.Z)));
-        var combatTarget = Svc.Objects.OfType<IBattleNpc>().OrderBy(Player.DistanceTo).FirstOrDefault(x => !x.IsDead && x.GetNameplateKind().EqualsAny(NameplateKind.HostileEngagedSelfUndamaged, NameplateKind.HostileEngagedSelfDamaged) && x.Struct()->NamePlateIconId == 71244);
-        combatTarget ??= Svc.Objects.OfType<IBattleNpc>().OrderBy(Player.DistanceTo).FirstOrDefault(x => !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244);
+        var validObjects = Svc.Objects.OfType<IBattleNpc>().Where(x => !plan.IgnoredMobs.Contains(x.NameId) && !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244).OrderBy(Player.DistanceTo);
+        //forced mobs first
+        var combatTarget = validObjects.FirstOrDefault(x => plan.ForcedMobs.Contains(x.NameId));
+        //then engaged
+        combatTarget ??= validObjects.FirstOrDefault(x => x.GetNameplateKind().EqualsAny(NameplateKind.HostileEngagedSelfUndamaged, NameplateKind.HostileEngagedSelfDamaged));
+        //then the rest
+        combatTarget ??= validObjects.FirstOrDefault();
         if(combatTarget != null && combatTarget.IsTargetable)
         {
             if(Player.DistanceTo(combatTarget) < 20f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -5f : 0f) && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -2f : 0f)) < 10f)
@@ -149,6 +154,33 @@ public unsafe class Utils
         }
         S.TaskManager.Enqueue(() =>
         {
+            if(AgentHUD.Instance()->MapMarkers.TryGetFirst(x => x.IconId == 60492, out var mark))
+            {
+                var d2d = Player.DistanceTo(new Vector2(mark.X, mark.Z));
+                if(d2d > 30)
+                {
+                    if(!S.TextAdvanceIPC.IsBusy() && EzThrottler.Throttle("PreliminaryMoveTo", 1000))
+                    {
+                        S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
+                        {
+                            DataID = 0,
+                            Fly = false,
+                            Mount = true,
+                            NoInteract = true,
+                            Position = new Vector3(mark.X, 0, mark.Z),
+                        });
+                    }
+                }
+                else
+                {
+                    S.TextAdvanceIPC.Stop();
+                    return true;
+                }
+            }
+            return false;
+        }, new(timeLimitMS:120*1000, abortOnTimeout:false));
+        S.TaskManager.Enqueue(() =>
+        {
             if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && m.IsAddonReady) return true;
             if(EzThrottler.Throttle("ALQ.ThrottleOpen", 5000))
             {
@@ -181,6 +213,10 @@ public unsafe class Utils
                 }
             }
             return false;
+        });
+        S.TaskManager.Enqueue(() =>
+        {
+            EzThrottler.Throttle("Wait", 2000, true);
         });
     }
 }

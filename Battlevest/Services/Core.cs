@@ -79,7 +79,7 @@ public unsafe class Core
                 }
                 else
                 {
-                    Utils.HandleCombat(npc() != null && Player.DistanceTo(npc()) < 10f, out _);
+                    Utils.HandleCombat(npc() != null && Player.DistanceTo(npc()) < 10f, Selected);
                 }
             }
             else

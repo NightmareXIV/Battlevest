@@ -1,9 +1,12 @@
 ﻿using Battlevest.Data;
 using Dalamud.Game.ClientState.Objects.Enums;
+using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.Automation;
+using ECommons.Configuration;
 using ECommons.ExcelServices;
 using ECommons.Funding;
 using ECommons.GameHelpers;
+using ECommons.Reflection;
 using ECommons.SimpleGui;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -95,9 +98,30 @@ public unsafe class MainWindow : ConfigWindow
                     Selected = plan;
                 }
                 ImGuiEx.Tooltip("To create plan, target levemete and press this button.");
+                ImGui.SameLine(0,1);
+                if(ImGuiEx.IconButton(FontAwesomeIcon.Paste))
+                {
+                    try
+                    {
+                        var pl = EzConfig.DefaultSerializationFactory.Deserialize<LevePlan>(Paste());
+                        C.Plans.Add(pl);
+                        Selected = pl;
+                    }
+                    catch(Exception e)
+                    {
+                        e.LogDuo();
+                    }
+                }
+                ImGuiEx.Tooltip("Paste");
                 if(Selected != null)
                 {
-                    ImGui.SameLine();
+                    ImGui.SameLine(0, 1);
+                    if(ImGuiEx.IconButton(FontAwesomeIcon.Copy))
+                    {
+                        Copy(EzConfig.DefaultSerializationFactory.Serialize(Selected, false));
+                    }
+                    ImGuiEx.Tooltip("Copy");
+                    ImGui.SameLine(0, 1);
                     if(ImGuiEx.IconButton(FontAwesomeIcon.Trash, enabled: ImGuiEx.Ctrl))
                     {
                         new TickScheduler(
@@ -147,6 +171,49 @@ public unsafe class MainWindow : ConfigWindow
                     ImGuiEx.Text(EColor.RedBright, "Approach NPC to begin this leve plan");
                 }
             }
+        }
+
+        if(Selected != null)
+        {
+            ImGuiEx.TreeNodeCollapsingHeader($"Configure forced mobs ({Selected.ForcedMobs.Count} mobs)###forced", () =>
+            {
+                if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.FastForward, "Add target as forced mob", Svc.Targets.Target is IBattleNpc))
+                {
+                    Selected.ForcedMobs.Add(((IBattleNpc)Svc.Targets.Target).NameId);
+                }
+                List<ImGuiEx.EzTableEntry> e = [];
+                foreach(var x in Selected.ForcedMobs)
+                {
+                    e.Add(new("Mob name", true, () => ImGuiEx.Text(Svc.Data.GetExcelSheet<BNpcName>().GetRow(x)?.Singular ?? x.ToString())), new("##del", () =>
+                    {
+                        if(ImGui.SmallButton($"Delete##f{x}"))
+                        {
+                            new TickScheduler(() => Selected.ForcedMobs.Remove(x));
+                        }
+                    }));
+                }
+                ImGuiEx.EzTable(ImGuiTableFlags.BordersInner | ImGuiTableFlags.SizingFixedFit, e);
+            });
+
+            ImGuiEx.TreeNodeCollapsingHeader($"Configure ignored mobs ({Selected.IgnoredMobs.Count} mobs)###ignored", () =>
+            {
+                if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Ban, "Add target as ignored mob", Svc.Targets.Target is IBattleNpc))
+                {
+                    Selected.IgnoredMobs.Add(((IBattleNpc)Svc.Targets.Target).NameId);
+                }
+                List<ImGuiEx.EzTableEntry> e = [];
+                foreach(var x in Selected.IgnoredMobs)
+                {
+                    e.Add(new("Mob name", true, () => ImGuiEx.Text(Svc.Data.GetExcelSheet<BNpcName>().GetRow(x)?.Singular ?? x.ToString())), new("##del", () =>
+                    {
+                        if(ImGui.SmallButton($"Delete##i{x}"))
+                        {
+                            new TickScheduler(() => Selected.IgnoredMobs.Remove(x));
+                        }
+                    }));
+                }
+                ImGuiEx.EzTable(ImGuiTableFlags.BordersInner | ImGuiTableFlags.SizingFixedFit, e);
+            });
         }
     }
 

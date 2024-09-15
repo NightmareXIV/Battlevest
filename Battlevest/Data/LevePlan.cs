@@ -16,6 +16,8 @@ public class LevePlan
     public uint Territory;
     public List<uint> LeveList = [];
     public int? Difficulty = null;
+    public HashSet<uint> IgnoredMobs = [];
+    public HashSet<uint> ForcedMobs = [];
 
     public string GetName()
     {
