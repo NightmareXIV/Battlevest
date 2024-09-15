@@ -2,13 +2,11 @@
 using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.Automation;
 using ECommons.Automation.NeoTaskManager.Tasks;
-using ECommons.Automation.UIInput;
 using ECommons.EzEventManager;
 using ECommons.GameHelpers;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
-using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
 using Action = System.Action;
@@ -23,9 +21,29 @@ public unsafe class Core
         new EzFrameworkUpdate(OnUpdate);
     }
 
+    ExternalTerritoryConfig ExternalTerritoryConfig = new()
+    {
+        EnableAutoInteract = false,
+        EnableTalkSkip = true,
+    };
+    bool ExternalControl = false;
+
     public void OnUpdate()
     {
-        if(!Enabled) return;
+        if(!Enabled)
+        {
+            if(ExternalControl)
+            {
+                ExternalControl = false;
+                S.TextAdvanceIPC.DisableExternalControl(Svc.PluginInterface.InternalName);
+            }
+            return;
+        }
+        ExternalControl = true;
+        if(!S.TextAdvanceIPC.IsInExternalControl())
+        {
+            S.TextAdvanceIPC.EnableExternalControl(Svc.PluginInterface.InternalName, ExternalTerritoryConfig);
+        }
         if(!IsScreenReady())
         {
             S.TextAdvanceIPC.Stop();
@@ -64,6 +82,12 @@ public unsafe class Core
                     if(npc() != null)
                     {
                         EzThrottler.Throttle("Wait", 5000, true);
+                        if(QuestManager.Instance()->NumLeveAllowances == 0)
+                        {
+                            DuoLog.Warning("No more leve allowances!");
+                            S.Core.Enabled = false;
+                            return;
+                        }
                         S.TaskManager.EnqueueTask(NeoTasks.ApproachObjectViaAutomove(npc, 6f));
                         S.TaskManager.EnqueueTask(NeoTasks.InteractWithObject(npc));
                         S.TaskManager.Enqueue(Utils.SelectBattleLeve);

@@ -15,6 +15,7 @@ public class LevePlan
     public string NpcName = "";
     public uint Territory;
     public List<uint> LeveList = [];
+    public int? Difficulty = null;
 
     public string GetName()
     {

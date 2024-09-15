@@ -58,7 +58,7 @@ public unsafe class Utils
         {
             if(m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.ExtractText())
                 ||
-                m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, "return to the levemete"))
+                m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, Svc.Data.GetExcelSheet<Leve_LeveDirector>().GetRow(0).Value.ExtractText(true)))
             {
                 S.TextAdvanceIPC.Stop();
                 if(EzThrottler.Throttle("YesNo"))

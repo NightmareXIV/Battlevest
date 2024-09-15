@@ -37,7 +37,7 @@ public unsafe class MainWindow : ConfigWindow
         ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 6))]);
         ImGuiEx.TextWrapped("- Vnavmesh installed and enabled");
         ImGuiEx.PluginAvailabilityIndicator([new("vnavmesh")]);
-        ImGuiEx.TextWrapped("- Job with powerful enough ranged attack to eliminate enemies");
+        ImGuiEx.TextWrapped("- Ranged job");
         ImGuiEx.TextWrapped("- Sloth Combo or any other rotation helper plugin that can put your ranged rotation on a single button, or rotation plugin that will auto-attack any targeted hostile monster (in this case, set your keybind to None). If you are overlevelled, you can probably get away with just spamming a single GCD skill. Preferably, use ranged class.");
         ImGui.SetNextItemWidth(200f);
         ImGuiEx.EnumCombo("Key to spam for attack", ref C.Key);
@@ -110,6 +110,14 @@ public unsafe class MainWindow : ConfigWindow
                         ImGuiEx.CollectionCheckbox($"Lv. {x.ClassJobLevel} - {x.Name.ExtractText()}", x.RowId, Selected.LeveList);
                     }
                 }
+
+                /*ImGuiEx.InputInt(150f, "Difficulty", ref Selected.Difficulty);
+                if(Selected.Difficulty != null)
+                {
+                    if(Selected.Difficulty.Value < 0) Selected.Difficulty = 0;
+                    if(Selected.Difficulty.Value > 4) Selected.Difficulty = 4;
+                }*/
+
                 if(Player.Territory != Selected.Territory)
                 {
                     ImGuiEx.Text(EColor.RedBright, "Current zone is inappropriate for this plan");
