@@ -70,13 +70,15 @@ public unsafe class MainWindow : ConfigWindow
                             Selected = x;
                         }
                     }
+                    ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudGrey3);
                     foreach(var x in C.Plans.Where(x => Player.Territory != x.Territory))
                     {
-                        if(ImGuiEx.Selectable(ImGuiColors.DalamudGrey3, $"{x.GetName()}##{x.ID}"))
+                        if(ImGui.Selectable($"{x.GetName()}##{x.ID}"))
                         {
                             Selected = x;
                         }
                     }
+                    ImGui.PopStyleColor();
                     ImGui.EndCombo();
                 }
             }, () =>
@@ -98,8 +100,8 @@ public unsafe class MainWindow : ConfigWindow
                     ImGui.SameLine();
                     if(ImGuiEx.IconButton(FontAwesomeIcon.Trash, enabled: ImGuiEx.Ctrl))
                     {
-                        Selected = null;
                         new TickScheduler(() => C.Plans.Remove(Selected));
+                        Selected = null;
                     }
                     ImGuiEx.Tooltip("Hold CTRL and click to delete");
                 }
