@@ -41,10 +41,13 @@ public unsafe class MainWindow : ConfigWindow
         ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 6))]);
         ImGuiEx.TextWrapped("- Vnavmesh installed and enabled");
         ImGuiEx.PluginAvailabilityIndicator([new("vnavmesh")]);
-        ImGuiEx.TextWrapped("- Ranged job");
-        ImGuiEx.TextWrapped("- Sloth Combo or any other rotation helper plugin that can put your ranged rotation on a single button, or rotation plugin that will auto-attack any targeted hostile monster (in this case, set your keybind to None). If you are overlevelled, you can probably get away with just spamming a single GCD skill. Preferably, use ranged class.");
+        ImGuiEx.TextWrapped("- Sloth Combo or any other rotation helper plugin that can put your ranged rotation on a single button, or rotation plugin that will auto-attack any targeted hostile monster (in this case, set your keybind to None). If you are overlevelled, you can probably get away with just spamming a single GCD skill. ");
+        ImGuiEx.TextWrapped("Additionally:");
+        ImGuiEx.TextWrapped("- Best results are achieved on ranged jobs");
+        ImGuiEx.TextWrapped("- BossMod's AI can be used to avoid AOE");
         ImGui.SetNextItemWidth(200f);
         ImGuiEx.EnumCombo("Key to spam for attack", ref C.Key);
+        //ImGui.Checkbox("Allow flight (also must be enabled in TextAdvance)");
     }
 
     private void DrawPlans()
@@ -144,6 +147,11 @@ public unsafe class MainWindow : ConfigWindow
                 {
                     if(x.ClassJobCategory.Value.IsJobInCategory(Job.PLD))
                     {
+                        ImGui.PushFont(UiBuilder.IconFont);
+                        ImGuiEx.CollectionButtonCheckbox(FontAwesomeIcon.Heart.ToIconString() + $"##{x.RowId}", x.RowId, Selected.Favorite);
+                        ImGui.PopFont();
+                        ImGuiEx.Tooltip("Mark as favorite. Favorite leves will be prioritized for picking. Usually you'd want to make shortest leves favorite.");
+                        ImGui.SameLine();
                         ImGuiEx.CollectionCheckbox($"Lv. {x.ClassJobLevel} - {x.Name.ExtractText()}", x.RowId, Selected.LeveList);
                     }
                 }

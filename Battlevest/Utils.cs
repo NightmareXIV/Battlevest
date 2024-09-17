@@ -3,6 +3,7 @@ using Battlevest.Sheets;
 using Dalamud.Game.ClientState.Objects.Types;
 using ECommons.Automation;
 using ECommons.Automation.UIInput;
+using ECommons.ExcelServices;
 using ECommons.GameFunctions;
 using ECommons.GameHelpers;
 using ECommons.Interop;
@@ -78,6 +79,7 @@ public unsafe class Utils
         {
             return;
         }
+        var isMelee = Player.Object.GetRole().EqualsAny(CombatRole.Tank) || Player.Job.GetUpgradedJob().EqualsAny(Job.RPR, Job.VPR, Job.SAM, Job.DRG, Job.MNK, Job.NIN);
         var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492).OrderBy(x => Player.DistanceTo(new Vector3(x.X, x.Y, x.Z)));
         var validObjects = Svc.Objects.OfType<IBattleNpc>().Where(x => !plan.IgnoredMobs.Contains(x.NameId) && !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244).OrderBy(Player.DistanceTo);
         //forced mobs first
@@ -88,7 +90,8 @@ public unsafe class Utils
         combatTarget ??= validObjects.FirstOrDefault();
         if(combatTarget != null && combatTarget.IsTargetable)
         {
-            if(Player.DistanceTo(combatTarget) < 20f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -5f : 0f) && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -2f : 0f)) < 10f)
+            var distance = isMelee ? 3f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -1.5f : 0f) : 20f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -5f : 0f);
+            if(Player.DistanceTo(combatTarget) < distance && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -2f : 0f)) < 10f)
             {
                 if(Svc.Targets.Target != combatTarget) Svc.Targets.Target = combatTarget;
                 S.TextAdvanceIPC.Stop();
@@ -112,7 +115,7 @@ public unsafe class Utils
             {
                 if(!S.TextAdvanceIPC.IsBusy() && EzThrottler.Throttle("TAPath"))
                 {
-                    var shouldMount = Player.DistanceTo(combatTarget) > 30f;
+                    var shouldMount = Player.DistanceTo(combatTarget) > 50f;
                     S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
                     {
                         Mount = forceMount || shouldMount,
@@ -134,7 +137,7 @@ public unsafe class Utils
                 {
                     S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
                     {
-                        Mount = forceMount || dst > 40f,
+                        Mount = forceMount || dst > 50f,
                         Fly = false,
                         NoInteract = true,
                         Position = new(mark.X, mark.Y, mark.Z)

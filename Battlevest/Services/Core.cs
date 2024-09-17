@@ -110,11 +110,12 @@ public unsafe class Core
                             S.TaskManager.Enqueue(() =>
                             {
                                 var acceptableLeves = Selected.LeveList.ToDictionary(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x).Name.ExtractText(), x => x);
+                                var preferredLeves = acceptableLeves.Where(x => Selected.Favorite.Contains(x.Value)).ToDictionary();
                                 if(TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady)
                                 {
                                     foreach(var l in m.Levequests)
                                     {
-                                        if(acceptableLeves.TryGetValue(l.Name, out var result))
+                                        if(preferredLeves.TryGetValue(l.Name, out var result) || acceptableLeves.TryGetValue(l.Name, out result))
                                         {
                                             l.Select();
                                             return true;

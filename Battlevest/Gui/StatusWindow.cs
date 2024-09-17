@@ -29,6 +29,10 @@ public class StatusWindow : Window
         }
         ImGui.SameLine();
         PatreonBanner.DrawButton();
+        if(S.TaskManager.IsBusy)
+        {
+            ImGuiEx.Text($"Processing tasks: {S.TaskManager.MaxTasks - S.TaskManager.NumQueuedTasks}/{S.TaskManager.MaxTasks}");
+        }
     }
 
     public override bool DrawConditions()

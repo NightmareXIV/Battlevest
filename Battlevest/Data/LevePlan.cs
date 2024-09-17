@@ -18,6 +18,7 @@ public class LevePlan
     public int? Difficulty = null;
     public HashSet<uint> IgnoredMobs = [];
     public HashSet<uint> ForcedMobs = [];
+    public HashSet<uint> Favorite = [];
 
     public string GetName()
     {
