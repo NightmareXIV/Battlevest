@@ -31,7 +31,7 @@ public unsafe class Core : IDisposable
         {
             var fm = $"ForcedMelee_{Svc.Targets.Target?.EntityId}";
             var ignore = $"Ignore_{Svc.Targets.Target?.EntityId}";
-            if(EzThrottler.Throttle(fm, 10000))
+            if(EzThrottler.Throttle(fm, 2000))
             {
                 DuoLog.Warning($"No LoS on {Svc.Targets.Target}, force melee range");
             }

@@ -12,7 +12,7 @@ public class LevePlan
 {
     internal string ID = Guid.NewGuid().ToString();
     public uint NpcDataID = 0;
-    public string NpcName = "";
+    public string Name = "";
     public uint Territory;
     public List<uint> LeveList = [];
     public int? Difficulty = null;
@@ -22,6 +22,7 @@ public class LevePlan
 
     public string GetName()
     {
+        if(this.Name != "") return this.Name;
         string text;
         if(LeveList.Count == 0)
         {
@@ -35,6 +36,16 @@ public class LevePlan
         {
             text = LeveList[0..1].Select(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x)?.Name.ExtractText() ?? "...").Print(", ") + $" and {LeveList.Count - 2} more";
         }
-        return $"{ExcelTerritoryHelper.GetName(Territory)} - {NpcName} - {text}";
+        return $"{ExcelTerritoryHelper.GetName(Territory)} - {GetNPCName()} - {text}";
+    }
+
+    public string GetNPCName()
+    {
+        return Svc.Data.GetExcelSheet<ENpcResident>().GetRow(this.NpcDataID)?.Singular ?? $"Unk{this.NpcDataID:X8}";
+    }
+
+    public string GetZoneName()
+    {
+        return ExcelTerritoryHelper.GetName(this.Territory);
     }
 }

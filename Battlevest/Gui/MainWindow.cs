@@ -15,11 +15,14 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.GeneratedSheets;
+using NightmareUI;
 
 namespace Battlevest.Gui;
 public unsafe class MainWindow : ConfigWindow
 {
     private ref LevePlan Selected => ref S.Core.Selected;
+    public readonly List<LevePlan> Presets = [..PredefinedPresets.GetList()];
+    private bool Readonly;
     public MainWindow()
     {
         EzConfigGui.Init(this);
@@ -28,7 +31,7 @@ public unsafe class MainWindow : ConfigWindow
 
     public override void Draw()
     {
-        ImGuiEx.LineCentered(() => ImGuiEx.Text(EColor.RedBright, "Alpha version"));
+        ImGuiEx.LineCentered("Beta", () => ImGuiEx.Text(EColor.OrangeBright, "Beta version"));
         PatreonBanner.DrawRight();
         ImGuiEx.EzTabBar("", PatreonBanner.Text,
             ("Options", DrawOptions, null, true),
@@ -70,15 +73,19 @@ public unsafe class MainWindow : ConfigWindow
         }
         else
         {
-            if(Player.TerritoryIntendedUse == TerritoryIntendedUseEnum.City_Area)
+            NuiTools.ButtonTabs("", [[new("Predefined", () => Readonly = true), new("Create your own", () => Readonly = false)]], child:false);
+            if(!Readonly && Player.TerritoryIntendedUse == TerritoryIntendedUseEnum.City_Area)
             {
-                ImGuiEx.Text(EColor.RedBright, "City leves are unsupported.");
+                ImGuiEx.LineCentered("nocity", () => ImGuiEx.Text(EColor.RedBright, "City leves are unsupported."));
             }
+            if(Readonly) ImGuiEx.LineCentered("predef", () => ImGuiEx.Text(EColor.YellowBright, "Predefined plans can not be edited."));
             ImGuiEx.InputWithRightButtonsArea(() =>
             {
+                var plans = Readonly ? this.Presets : C.Plans;
+                if(!plans.Contains(Selected)) Selected = null;
                 if(ImGui.BeginCombo("##leveselect", Selected?.GetName() ?? "No plan selected"))
                 {
-                    foreach(var x in C.Plans.Where(x => Player.Territory == x.Territory))
+                    foreach(var x in plans.Where(x => Player.Territory == x.Territory))
                     {
                         if(ImGui.Selectable($"{x.GetName()}##{x.ID}"))
                         {
@@ -86,7 +93,7 @@ public unsafe class MainWindow : ConfigWindow
                         }
                     }
                     ImGui.PushStyleColor(ImGuiCol.Text, ImGuiColors.DalamudGrey3);
-                    foreach(var x in C.Plans.Where(x => Player.Territory != x.Territory))
+                    foreach(var x in plans.Where(x => Player.Territory != x.Territory))
                     {
                         if(ImGui.Selectable($"{x.GetName()}##{x.ID}"))
                         {
@@ -98,33 +105,35 @@ public unsafe class MainWindow : ConfigWindow
                 }
             }, () =>
             {
-                if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Plus, "Add from target", Svc.Targets.Target?.ObjectKind == ObjectKind.EventNpc) && Player.TerritoryIntendedUse != TerritoryIntendedUseEnum.City_Area)
+                if(!Readonly)
                 {
-                    var plan = new LevePlan()
+                    if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Plus, "Add from target", Svc.Targets.Target?.ObjectKind == ObjectKind.EventNpc) && Player.TerritoryIntendedUse != TerritoryIntendedUseEnum.City_Area)
                     {
-                        NpcDataID = Svc.Targets.Target.DataId,
-                        NpcName = Svc.Targets.Target.Name.ExtractText(),
-                        Territory = Svc.ClientState.TerritoryType,
-                    };
-                    C.Plans.Add(plan);
-                    Selected = plan;
-                }
-                ImGuiEx.Tooltip("To create plan, target levemete and press this button.");
-                ImGui.SameLine(0,1);
-                if(ImGuiEx.IconButton(FontAwesomeIcon.Paste))
-                {
-                    try
-                    {
-                        var pl = EzConfig.DefaultSerializationFactory.Deserialize<LevePlan>(Paste());
-                        C.Plans.Add(pl);
-                        Selected = pl;
+                        var plan = new LevePlan()
+                        {
+                            NpcDataID = Svc.Targets.Target.DataId,
+                            Territory = Svc.ClientState.TerritoryType,
+                        };
+                        C.Plans.Add(plan);
+                        Selected = plan;
                     }
-                    catch(Exception e)
+                    ImGuiEx.Tooltip("To create plan, target levemete and press this button.");
+                    ImGui.SameLine(0, 1);
+                    if(ImGuiEx.IconButton(FontAwesomeIcon.Paste))
                     {
-                        e.LogDuo();
+                        try
+                        {
+                            var pl = EzConfig.DefaultSerializationFactory.Deserialize<LevePlan>(Paste());
+                            C.Plans.Add(pl);
+                            Selected = pl;
+                        }
+                        catch(Exception e)
+                        {
+                            e.LogDuo();
+                        }
                     }
+                    ImGuiEx.Tooltip("Paste");
                 }
-                ImGuiEx.Tooltip("Paste");
                 if(Selected != null)
                 {
                     ImGui.SameLine(0, 1);
@@ -133,25 +142,55 @@ public unsafe class MainWindow : ConfigWindow
                         Copy(EzConfig.DefaultSerializationFactory.Serialize(Selected, false));
                     }
                     ImGuiEx.Tooltip("Copy");
-                    ImGui.SameLine(0, 1);
-                    if(ImGuiEx.IconButton(FontAwesomeIcon.Trash, enabled: ImGuiEx.Ctrl))
+                    if(!Readonly)
                     {
-                        new TickScheduler(
-                            () =>
-                            {
-                                C.Plans.Remove(Selected);
-                                Selected = null;
-                            }
-                            );
+                        ImGui.SameLine(0, 1);
+                        if(ImGuiEx.IconButton(FontAwesomeIcon.Trash, enabled: ImGuiEx.Ctrl))
+                        {
+                            new TickScheduler(
+                                () =>
+                                {
+                                    C.Plans.Remove(Selected);
+                                }
+                                );
+                        }
+                        ImGuiEx.Tooltip("Hold CTRL and click to delete");
                     }
-                    ImGuiEx.Tooltip("Hold CTRL and click to delete");
                 }
             });
             if(Selected != null)
             {
-                ImGuiEx.TextWrapped(Selected.GetName());
-                ImGuiEx.TextWrapped("Select levequests you want to do.");
-                ImGuiEx.TextWrapped(EColor.RedBright, "Only \"kill enemies\" leve types are supported");
+                if(!Readonly)
+                {
+                    ImGuiEx.SetNextItemFullWidth();
+                    ImGui.InputTextWithHint("##name", Selected.GetName(), ref Selected.Name, 200);
+                }
+                ImGuiEx.LineCentered("npc",  () => ImGuiEx.Text($"NPC: {Selected.GetNPCName()} | Zone: {Selected.GetZoneName()}"));
+                ImGuiEx.LineCentered("init", () =>
+                {
+                    if(Player.Territory != Selected.Territory)
+                    {
+                        ImGuiEx.Text(EColor.RedBright, "Current zone is inappropriate for this plan");
+                    }
+                    else if(QuestManager.Instance()->LeveQuests.ToArray().Any(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)) || (Svc.Objects.Any(x => x.DataId == Selected.NpcDataID && x.IsTargetable && Player.DistanceTo(x) < 6)))
+                    {
+                        if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Play, "Begin", Selected.LeveList.Count > 0))
+                        {
+                            S.Core.StopNext = false;
+                            S.Core.Enabled = true;
+                        }
+                    }
+                    else
+                    {
+                        ImGuiEx.Text(EColor.RedBright, "Approach NPC to begin this leve plan");
+                    }
+                });
+                if(!Readonly)
+                {
+                    ImGuiEx.LineCentered("sel1", () => ImGuiEx.Text("Select levequests you want to do."));
+                    ImGuiEx.LineCentered("sel2", () => ImGuiEx.Text(EColor.RedBright, "Only \"kill enemies\" leve types are supported"));
+                }
+                if(Readonly) ImGui.BeginDisabled();
                 foreach(var x in Svc.Data.GetExcelSheet<Leve>().Where(l => l.LevelLevemete.Value?.Object == Selected.NpcDataID))
                 {
                     if(x.ClassJobCategory.Value.IsJobInCategory(Job.PLD))
@@ -164,38 +203,15 @@ public unsafe class MainWindow : ConfigWindow
                         ImGuiEx.CollectionCheckbox($"Lv. {x.ClassJobLevel} - {x.Name.ExtractText()}", x.RowId, Selected.LeveList);
                     }
                 }
-
-                /*ImGuiEx.InputInt(150f, "Difficulty", ref Selected.Difficulty);
-                if(Selected.Difficulty != null)
-                {
-                    if(Selected.Difficulty.Value < 0) Selected.Difficulty = 0;
-                    if(Selected.Difficulty.Value > 4) Selected.Difficulty = 4;
-                }*/
-
-                if(Player.Territory != Selected.Territory)
-                {
-                    ImGuiEx.Text(EColor.RedBright, "Current zone is inappropriate for this plan");
-                }
-                else if(QuestManager.Instance()->LeveQuests.ToArray().Any(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)) || (Svc.Objects.Any(x => x.DataId == Selected.NpcDataID && x.IsTargetable && Player.DistanceTo(x) < 6)))
-                {
-                    if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Play, "Begin", Selected.LeveList.Count > 0))
-                    {
-                        S.Core.StopNext = false;
-                        S.Core.Enabled = true;
-                    }
-                }
-                else
-                {
-                    ImGuiEx.Text(EColor.RedBright, "Approach NPC to begin this leve plan");
-                }
+                if(Readonly) ImGui.EndDisabled();
             }
         }
 
         if(Selected != null)
         {
-            ImGuiEx.TreeNodeCollapsingHeader($"Configure forced mobs ({Selected.ForcedMobs.Count} mobs)###forced", () =>
+            ImGuiEx.TreeNodeCollapsingHeader($"Preferred mobs ({Selected.ForcedMobs.Count} mobs)###forced", () =>
             {
-                if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.FastForward, "Add target as forced mob", Svc.Targets.Target is IBattleNpc))
+                if(!Readonly && ImGuiEx.IconButtonWithText(FontAwesomeIcon.FastForward, "Add target as forced mob", Svc.Targets.Target is IBattleNpc))
                 {
                     Selected.ForcedMobs.Add(((IBattleNpc)Svc.Targets.Target).NameId);
                 }
@@ -204,7 +220,7 @@ public unsafe class MainWindow : ConfigWindow
                 {
                     e.Add(new("Mob name", true, () => ImGuiEx.Text(Svc.Data.GetExcelSheet<BNpcName>().GetRow(x)?.Singular ?? x.ToString())), new("##del", () =>
                     {
-                        if(ImGui.SmallButton($"Delete##f{x}"))
+                        if(!Readonly && ImGui.SmallButton($"Delete##f{x}"))
                         {
                             new TickScheduler(() => Selected.ForcedMobs.Remove(x));
                         }
@@ -213,9 +229,9 @@ public unsafe class MainWindow : ConfigWindow
                 ImGuiEx.EzTable(ImGuiTableFlags.BordersInner | ImGuiTableFlags.SizingFixedFit, e);
             });
 
-            ImGuiEx.TreeNodeCollapsingHeader($"Configure ignored mobs ({Selected.IgnoredMobs.Count} mobs)###ignored", () =>
+            ImGuiEx.TreeNodeCollapsingHeader($"Ignored mobs ({Selected.IgnoredMobs.Count} mobs)###ignored", () =>
             {
-                if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Ban, "Add target as ignored mob", Svc.Targets.Target is IBattleNpc))
+                if(!Readonly && ImGuiEx.IconButtonWithText(FontAwesomeIcon.Ban, "Add target as ignored mob", Svc.Targets.Target is IBattleNpc))
                 {
                     Selected.IgnoredMobs.Add(((IBattleNpc)Svc.Targets.Target).NameId);
                 }
@@ -224,7 +240,7 @@ public unsafe class MainWindow : ConfigWindow
                 {
                     e.Add(new("Mob name", true, () => ImGuiEx.Text(Svc.Data.GetExcelSheet<BNpcName>().GetRow(x)?.Singular ?? x.ToString())), new("##del", () =>
                     {
-                        if(ImGui.SmallButton($"Delete##i{x}"))
+                        if(!Readonly && ImGui.SmallButton($"Delete##i{x}"))
                         {
                             new TickScheduler(() => Selected.IgnoredMobs.Remove(x));
                         }
