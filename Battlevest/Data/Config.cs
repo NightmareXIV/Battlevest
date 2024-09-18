@@ -12,4 +12,7 @@ public class Config : IEzConfig
 {
     public List<LevePlan> Plans = [];
     public LimitedKeys Key = LimitedKeys.Digit_1;
+    public int StopAt = 0;
+    public bool AllowMultiple = true;
+    public bool AllowFlight = false;
 }

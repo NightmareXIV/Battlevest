@@ -1,6 +1,7 @@
 ﻿using Battlevest.Data;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Memory;
 using ECommons.Automation;
 using ECommons.Configuration;
 using ECommons.ExcelServices;
@@ -8,8 +9,11 @@ using ECommons.Funding;
 using ECommons.GameHelpers;
 using ECommons.Reflection;
 using ECommons.SimpleGui;
+using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.GeneratedSheets;
 
 namespace Battlevest.Gui;
@@ -38,16 +42,21 @@ public unsafe class MainWindow : ConfigWindow
     {
         ImGuiEx.Text("Requirements:");
         ImGuiEx.TextWrapped("- TextAdvance installed, enabled and \"Navigation\" enabled it it's options");
-        ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 6))]);
+        ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 7))]);
         ImGuiEx.TextWrapped("- Vnavmesh installed and enabled");
         ImGuiEx.PluginAvailabilityIndicator([new("vnavmesh")]);
         ImGuiEx.TextWrapped("- Sloth Combo or any other rotation helper plugin that can put your ranged rotation on a single button, or rotation plugin that will auto-attack any targeted hostile monster (in this case, set your keybind to None). If you are overlevelled, you can probably get away with just spamming a single GCD skill. ");
         ImGuiEx.TextWrapped("Additionally:");
         ImGuiEx.TextWrapped("- Best results are achieved on ranged jobs");
+        ImGuiEx.TextWrapped("- Have an equipment in which your chara can tank mobs, ~10 levels higher than levequest is usually good");
         ImGuiEx.TextWrapped("- BossMod's AI can be used to avoid AOE");
         ImGui.SetNextItemWidth(200f);
         ImGuiEx.EnumCombo("Key to spam for attack", ref C.Key);
-        //ImGui.Checkbox("Allow flight (also must be enabled in TextAdvance)");
+        ImGui.SetNextItemWidth(100f);
+        ImGui.InputInt("Stop upon reaching this amount of allowances", ref C.StopAt);
+        ImGui.Checkbox("Allow accepting multiple levequests", ref C.AllowMultiple);
+        ImGui.Checkbox("Allow flight", ref C.AllowFlight);
+        ImGuiEx.HelpMarker("Also must be enabled in TextAdvance's settings.\nIn general, less reliable than walking.", EColor.RedBright, FontAwesomeIcon.ExclamationTriangle.ToIconString());
     }
 
     private void DrawPlans()
@@ -167,10 +176,11 @@ public unsafe class MainWindow : ConfigWindow
                 {
                     ImGuiEx.Text(EColor.RedBright, "Current zone is inappropriate for this plan");
                 }
-                else if(QuestManager.Instance()->LeveQuests.ToArray().Any(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)) || Svc.Objects.Any(x => x.DataId == Selected.NpcDataID && x.IsTargetable && Player.DistanceTo(x) < 6))
+                else if(QuestManager.Instance()->LeveQuests.ToArray().Any(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)) || (Svc.Objects.Any(x => x.DataId == Selected.NpcDataID && x.IsTargetable && Player.DistanceTo(x) < 6)))
                 {
                     if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Play, "Begin", Selected.LeveList.Count > 0))
                     {
+                        S.Core.StopNext = false;
                         S.Core.Enabled = true;
                     }
                 }
@@ -227,6 +237,23 @@ public unsafe class MainWindow : ConfigWindow
 
     private void DrawDebug()
     {
+        if(ImGui.CollapsingHeader("HUD"))
+        {
+            ImGuiEx.Text($"Initial markers:");
+            var markers = AgentHUD.Instance()->MapMarkers;
+            foreach(var x in markers.Where(s => s.IconId == 60492))
+            {
+                ImGuiEx.Text($"Coord: {x.X}, {x.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
+            }
+            ImGuiEx.Text("All markers:");
+
+            foreach(var x in markers)
+            {
+                ImGuiEx.Text($"IconID: {x.IconId}, Coord: {x.X}, {x.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
+            }
+        }
+        if(ImGui.Button("Force melee on target")) EzThrottler.Throttle($"ForcedMelee_{Svc.Targets.Target?.EntityId}", 10000, true);
+        if(ImGui.Button("Ignore target")) EzThrottler.Throttle($"Ignore_{Svc.Targets.Target?.EntityId}", 10000, true);
         if(ImGui.CollapsingHeader("Debug leves"))
         {
             var leves = QuestManager.Instance()->LeveQuests;

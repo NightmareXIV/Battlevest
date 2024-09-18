@@ -29,6 +29,7 @@ public class StatusWindow : Window
         }
         ImGui.SameLine();
         PatreonBanner.DrawButton();
+        ImGui.Checkbox("Finish at next return", ref S.Core.StopNext);
         if(S.TaskManager.IsBusy)
         {
             ImGuiEx.Text($"Processing tasks: {S.TaskManager.MaxTasks - S.TaskManager.NumQueuedTasks}/{S.TaskManager.MaxTasks}");

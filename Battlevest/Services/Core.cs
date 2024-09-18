@@ -13,13 +13,34 @@ using Lumina.Excel.GeneratedSheets;
 using Action = System.Action;
 
 namespace Battlevest.Services;
-public unsafe class Core
+public unsafe class Core : IDisposable
 {
     public bool Enabled = false;
     public LevePlan Selected = null;
+    public bool StopNext = false;
     private Core()
     {
+        Svc.Toasts.ErrorToast += Toasts_ErrorToast;
         new EzFrameworkUpdate(OnUpdate);
+    }
+
+    private void Toasts_ErrorToast(ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
+    {
+        if(!Enabled) return;
+        if(message.ExtractText().EqualsIgnoreCase(Svc.Data.GetExcelSheet<LogMessage>().GetRow(562).Text.ExtractText()))
+        {
+            var fm = $"ForcedMelee_{Svc.Targets.Target?.EntityId}";
+            var ignore = $"Ignore_{Svc.Targets.Target?.EntityId}";
+            if(EzThrottler.Throttle(fm, 10000))
+            {
+                DuoLog.Warning($"No LoS on {Svc.Targets.Target}, force melee range");
+            }
+            else
+            {
+                EzThrottler.Throttle(ignore, 10000, true);
+                DuoLog.Warning($"No LoS on {Svc.Targets.Target} in melee range, temporarily ignoring target");
+            }
+        }
     }
 
     private ExternalTerritoryConfig ExternalTerritoryConfig = new()
@@ -85,7 +106,7 @@ public unsafe class Core
             else
             {
                 S.TextAdvanceIPC.Stop();
-                var currentLeves = QuestManager.Instance()->LeveQuests.ToArray().Where(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId));
+                var currentLeves = QuestManager.Instance()->LeveQuests.ToArray().Where(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)).OrderBy(x => Utils.GetDistanceToLeve(x.LeveId));
                 if(currentLeves.Any())
                 {
                     Utils.Initiate(currentLeves.First().LeveId);
@@ -96,47 +117,24 @@ public unsafe class Core
                     if(npc() != null)
                     {
                         EzThrottler.Throttle("Wait", 5000, true);
-                        if(QuestManager.Instance()->NumLeveAllowances == 0)
+                        if(QuestManager.Instance()->NumLeveAllowances <= C.StopAt)
                         {
                             DuoLog.Warning("No more leve allowances!");
+                            S.Core.Enabled = false;
+                            return;
+                        }
+                        if(StopNext)
+                        {
+                            StopNext = false;
                             S.Core.Enabled = false;
                             return;
                         }
                         S.TaskManager.EnqueueTask(NeoTasks.ApproachObjectViaAutomove(npc, 6f));
                         S.TaskManager.EnqueueTask(NeoTasks.InteractWithObject(npc));
                         S.TaskManager.Enqueue(Utils.SelectBattleLeve);
-                        for(var i = 0; i < 10; i++)
-                        {
-                            S.TaskManager.Enqueue(() =>
-                            {
-                                var acceptableLeves = Selected.LeveList.ToDictionary(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x).Name.ExtractText(), x => x);
-                                var preferredLeves = acceptableLeves.Where(x => Selected.Favorite.Contains(x.Value)).ToDictionary();
-                                if(TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady)
-                                {
-                                    foreach(var l in m.Levequests)
-                                    {
-                                        if(preferredLeves.TryGetValue(l.Name, out var result) || acceptableLeves.TryGetValue(l.Name, out result))
-                                        {
-                                            l.Select();
-                                            return true;
-                                        }
-                                    }
-                                }
-                                return false;
-                            });
-                        }
-                        S.TaskManager.Enqueue(() =>
-                        {
-                            if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m))
-                            {
-                                if(EzThrottler.Throttle("Accept"))
-                                {
-                                    m.AcceptMap();
-                                }
-                                return true;
-                            }
-                            return false;
-                        });
+
+                        S.TaskManager.Enqueue(Utils.RecursivelyAcceptLeves);
+
                         S.TaskManager.Enqueue(() =>
                         {
                             if(!IsOccupied()) return true;
@@ -155,5 +153,10 @@ public unsafe class Core
                 }
             }
         }
+    }
+
+    public void Dispose()
+    {
+        Svc.Toasts.ErrorToast -= Toasts_ErrorToast;
     }
 }

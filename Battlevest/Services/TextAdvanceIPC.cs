@@ -9,7 +9,8 @@ using System.Threading.Tasks;
 namespace Battlevest.Services;
 public class TextAdvanceIPC
 {
-    [EzIPC("EnqueueMoveTo2DPoint")] public Action<MoveData> EnqueueMoveTo2DPoint;
+    [EzIPC("EnqueueMoveTo2DPoint")] public Action<MoveData, float> EnqueueMoveTo2DPoint;
+    [EzIPC("EnqueueMoveTo3DPoint")] public Action<MoveData, float> EnqueueMoveTo3DPoint;
     [EzIPC("Stop")] public Action Stop;
     [EzIPC("IsBusy")] public Func<bool> IsBusy;
     /// <summary>

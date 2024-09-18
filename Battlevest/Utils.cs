@@ -1,6 +1,7 @@
 ﻿using Battlevest.Data;
 using Battlevest.Sheets;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Memory;
 using ECommons.Automation;
 using ECommons.Automation.UIInput;
 using ECommons.ExcelServices;
@@ -9,12 +10,13 @@ using ECommons.GameHelpers;
 using ECommons.Interop;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
 
 namespace Battlevest;
-public unsafe class Utils
+public unsafe static class Utils
 {
     public static void Stop()
     {
@@ -58,14 +60,21 @@ public unsafe class Utils
     {
         if(TryGetAddonMaster<AddonMaster.SelectYesno>("SelectYesno", out var m) && m.IsAddonReady)
         {
-            if(m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.ExtractText())
-                ||
-                m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, Svc.Data.GetExcelSheet<Leve_LeveDirector>().GetRow(0).Value.ExtractText(true)))
+            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, Svc.Data.GetExcelSheet<Leve_LeveDirector>().GetRow(0).Value.ExtractText(true));
+            if(isLeveFinish || m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.ExtractText()))
             {
                 S.TextAdvanceIPC.Stop();
                 if(EzThrottler.Throttle("YesNo"))
                 {
-                    m.Yes();
+                    var shouldNo = isLeveFinish && QuestManager.Instance()->LeveQuests.ToArray().Any(x => x.Flags == 0 && S.Core.Selected.LeveList.Contains(x.LeveId));
+                    if(shouldNo)
+                    {
+                        m.No();
+                    }
+                    else
+                    {
+                        m.Yes();
+                    }
                     return true;
                 }
             }
@@ -80,8 +89,8 @@ public unsafe class Utils
             return;
         }
         var isMelee = Player.Object.GetRole().EqualsAny(CombatRole.Tank) || Player.Job.GetUpgradedJob().EqualsAny(Job.RPR, Job.VPR, Job.SAM, Job.DRG, Job.MNK, Job.NIN);
-        var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492).OrderBy(x => Player.DistanceTo(new Vector3(x.X, x.Y, x.Z)));
-        var validObjects = Svc.Objects.OfType<IBattleNpc>().Where(x => !plan.IgnoredMobs.Contains(x.NameId) && !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244).OrderBy(Player.DistanceTo);
+        var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492 && x.Radius < 50).OrderBy(x => Player.DistanceTo(new Vector3(x.X, x.Y, x.Z)));
+        var validObjects = Svc.Objects.OfType<IBattleNpc>().Where(x => !plan.IgnoredMobs.Contains(x.NameId) && !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244 && EzThrottler.Check($"Ignore_{x.EntityId}")).OrderBy(Player.DistanceTo);
         //forced mobs first
         var combatTarget = validObjects.FirstOrDefault(x => plan.ForcedMobs.Contains(x.NameId));
         //then engaged
@@ -90,8 +99,9 @@ public unsafe class Utils
         combatTarget ??= validObjects.FirstOrDefault();
         if(combatTarget != null && combatTarget.IsTargetable)
         {
+            if(!EzThrottler.Check($"ForcedMelee_{combatTarget.EntityId}")) isMelee = true;
             var distance = isMelee ? 3f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -1.5f : 0f) : 20f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -5f : 0f);
-            if(Player.DistanceTo(combatTarget) < distance && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -2f : 0f)) < 10f)
+            if(Player.DistanceTo(combatTarget) < distance && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -2f : 0f)) < 10)
             {
                 if(Svc.Targets.Target != combatTarget) Svc.Targets.Target = combatTarget;
                 S.TextAdvanceIPC.Stop();
@@ -99,7 +109,7 @@ public unsafe class Utils
                 {
                     if(EzThrottler.Throttle("Dismount", 1000))
                     {
-                        Chat.Instance.ExecuteCommand("/generalaction \"Dismount\"");
+                        Chat.Instance.ExecuteGeneralAction(23);
                     }
                 }
                 else
@@ -116,13 +126,13 @@ public unsafe class Utils
                 if(!S.TextAdvanceIPC.IsBusy() && EzThrottler.Throttle("TAPath"))
                 {
                     var shouldMount = Player.DistanceTo(combatTarget) > 50f;
-                    S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
+                    S.TextAdvanceIPC.EnqueueMoveTo3DPoint(new()
                     {
                         Mount = forceMount || shouldMount,
-                        Fly = false,
+                        Fly = C.AllowFlight,
                         NoInteract = true,
                         Position = combatTarget.Position
-                    });
+                    }, 0.5f);
                 }
             }
         }
@@ -138,10 +148,10 @@ public unsafe class Utils
                     S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
                     {
                         Mount = forceMount || dst > 50f,
-                        Fly = false,
+                        Fly = C.AllowFlight,
                         NoInteract = true,
                         Position = new(mark.X, mark.Y, mark.Z)
-                    });
+                    }, 3f);
                 }
             }
         }
@@ -155,9 +165,11 @@ public unsafe class Utils
             DuoLog.Error($"Can not initiate, already doing levequest");
             return;
         }
+        if(!EzThrottler.Check("InitiateThrottle")) return;
         S.TaskManager.Enqueue(() =>
         {
-            if(AgentHUD.Instance()->MapMarkers.TryGetFirst(x => x.IconId == 60492, out var mark))
+            var sortedMarkers = AgentHUD.Instance()->MapMarkers.ToArray().OrderBy(x => Player.DistanceTo(new Vector2(x.X, x.Z)));
+            if(sortedMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).ExtractText() == Svc.Data.GetExcelSheet<Leve>().GetRow(questId).Name.ExtractText(), out var mark) || sortedMarkers.TryGetFirst(x => x.IconId == 60492, out mark))
             {
                 var d2d = Player.DistanceTo(new Vector2(mark.X, mark.Z));
                 if(d2d > 30)
@@ -167,11 +179,11 @@ public unsafe class Utils
                         S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
                         {
                             DataID = 0,
-                            Fly = false,
+                            Fly = C.AllowFlight,
                             Mount = true,
                             NoInteract = true,
                             Position = new Vector3(mark.X, 0, mark.Z),
-                        });
+                        }, 3f);
                     }
                 }
                 else
@@ -181,7 +193,7 @@ public unsafe class Utils
                 }
             }
             return false;
-        }, new(timeLimitMS:120*1000, abortOnTimeout:false));
+        }, $"Move to position, id={questId}", new(timeLimitMS:120*1000, abortOnTimeout:false));
         S.TaskManager.Enqueue(() =>
         {
             if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && m.IsAddonReady) return true;
@@ -190,7 +202,7 @@ public unsafe class Utils
                 AgentQuestJournal.Instance()->OpenForQuest(questId, 2, keepOpen: true);
             }
             return false;
-        });
+        }, $"Open journal, id={questId}");
         S.TaskManager.Enqueue(() =>
         {
             if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && m.IsAddonReady)
@@ -202,7 +214,7 @@ public unsafe class Utils
                 }
             }
             return false;
-        });
+        }, $"Initiate, id={questId}");
         S.TaskManager.Enqueue(() =>
         {
             if(Svc.Condition[ConditionFlag.BoundByDuty]) return true;
@@ -216,10 +228,88 @@ public unsafe class Utils
                 }
             }
             return false;
-        });
+        }, $"Select difficulty, id={questId}");
         S.TaskManager.Enqueue(() =>
         {
             EzThrottler.Throttle("Wait", 2000, true);
-        });
+            EzThrottler.Throttle("InitiateThrottle", 20000, true);
+        }, $"Throttle initiation, id={questId}");
+    }
+
+    public static bool RecursivelyAcceptLeves()
+    {
+        if(TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady)
+        {
+            var currentLeves = m.Levequests.Length;
+            var acceptableLeves = S.Core.Selected.LeveList.ToDictionary(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x).Name.ExtractText(), x => x);
+            var preferredLeves = acceptableLeves.Where(x => S.Core.Selected.Favorite.Contains(x.Value)).ToDictionary();
+            GuildLeve.Levequest selectedLeve = null;
+            foreach(var l in m.Levequests)
+            {
+                if(preferredLeves.TryGetValue(l.Name, out var result) || acceptableLeves.TryGetValue(l.Name, out result))
+                {
+                    selectedLeve = l;
+                    break;
+                }
+            }
+            if(selectedLeve != null)
+            {
+                S.TaskManager.BeginStack();
+                try
+                {
+                    for(int i = 0; i < 10; i++)
+                    {
+                        S.TaskManager.Enqueue(() => SelectLeveInternal(selectedLeve.Name), $"Select {selectedLeve.Name}");
+                    }
+                    S.TaskManager.Enqueue(() =>
+                    {
+                        if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m))
+                        {
+                            if(EzThrottler.Throttle("Accept"))
+                            {
+                                m.AcceptMap();
+                            }
+                            return true;
+                        }
+                        return false;
+                    }, $"Accept {selectedLeve.Name}");
+                    S.TaskManager.Enqueue(() => TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady && m.Levequests.Length != currentLeves, "Wait for acceptance");
+                    if(QuestManager.Instance()->NumLeveAllowances > C.StopAt && C.AllowMultiple) S.TaskManager.Enqueue(RecursivelyAcceptLeves);
+                }
+                catch(Exception e)
+                {
+                    e.Log();
+                }
+                S.TaskManager.InsertStack();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static bool SelectLeveInternal(string name)
+    {
+        if(TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady)
+        {
+            foreach(var l in m.Levequests)
+            {
+                if(l.Name == name)
+                {
+                    l.Select();
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static float GetDistanceToLeve(uint leveId)
+    {
+        var leveName = Svc.Data.GetExcelSheet<Leve>().GetRow(leveId).Name.ExtractText();
+        if(AgentHUD.Instance()->MapMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).ExtractText() == leveName, out var m))
+        {
+            return Player.DistanceTo(new Vector2(m.X, m.Z));
+        }
+        return 999999;
     }
 }
