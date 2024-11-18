@@ -8,6 +8,7 @@ using ECommons.GameHelpers;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
 using Action = System.Action;
@@ -27,6 +28,7 @@ public unsafe class Core : IDisposable
     private void Toasts_ErrorToast(ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
     {
         if(!Enabled) return;
+        if(AgentMap.Instance()->IsPlayerMoving == 1) return;
         if(message.ExtractText().EqualsIgnoreCase(Svc.Data.GetExcelSheet<LogMessage>().GetRow(562).Text.ExtractText()))
         {
             var fm = $"ForcedMelee_{Svc.Targets.Target?.EntityId}";
@@ -47,6 +49,7 @@ public unsafe class Core : IDisposable
     {
         EnableAutoInteract = false,
         EnableTalkSkip = true,
+        EnableQuestComplete = true,
     };
     private bool ExternalControl = false;
 
@@ -89,6 +92,7 @@ public unsafe class Core : IDisposable
             S.TextAdvanceIPC.Stop();
         }
         Utils.HandleYesno();
+        Utils.HandleTrade();
         if(Selected != null && Player.Interactable && !IsOccupied() && Selected.Territory == Player.Territory && EzThrottler.Check("Wait") && !S.TaskManager.IsBusy)
         {
             IGameObject npc() => Svc.Objects.OrderBy(x => Player.DistanceTo(x.Position)).FirstOrDefault(x => x.DataId == Selected.NpcDataID);

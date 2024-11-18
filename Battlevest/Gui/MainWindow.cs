@@ -1,10 +1,13 @@
 ﻿using Battlevest.Data;
 using Dalamud.Game.ClientState.Objects.Enums;
 using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Interface.Components;
+using Dalamud.Interface.ManagedFontAtlas;
 using Dalamud.Memory;
 using ECommons.Automation;
 using ECommons.Configuration;
 using ECommons.ExcelServices;
+using ECommons.ExcelServices.TerritoryEnumeration;
 using ECommons.Funding;
 using ECommons.GameHelpers;
 using ECommons.Reflection;
@@ -16,12 +19,13 @@ using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.GeneratedSheets;
 using NightmareUI;
+using NightmareUI.PrimaryUI;
 
 namespace Battlevest.Gui;
-public unsafe class MainWindow : ConfigWindow
+public unsafe class MainWindow : ConfigWindow, IDisposable
 {
     private ref LevePlan Selected => ref S.Core.Selected;
-    public readonly List<LevePlan> Presets = [..PredefinedPresets.GetList()];
+    public readonly List<LevePlan> Presets = [.. PredefinedPresets.GetList()];
     private bool Readonly;
     public MainWindow()
     {
@@ -43,23 +47,57 @@ public unsafe class MainWindow : ConfigWindow
 
     private void DrawOptions()
     {
-        ImGuiEx.Text("Requirements:");
-        ImGuiEx.TextWrapped("- TextAdvance installed, enabled and \"Navigation\" enabled it it's options");
-        ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 7))]);
-        ImGuiEx.TextWrapped("- Vnavmesh installed and enabled");
-        ImGuiEx.PluginAvailabilityIndicator([new("vnavmesh")]);
-        ImGuiEx.TextWrapped("- Sloth Combo or any other rotation helper plugin that can put your ranged rotation on a single button, or rotation plugin that will auto-attack any targeted hostile monster (in this case, set your keybind to None). If you are overlevelled, you can probably get away with just spamming a single GCD skill. ");
-        ImGuiEx.TextWrapped("Additionally:");
-        ImGuiEx.TextWrapped("- Best results are achieved on ranged jobs");
-        ImGuiEx.TextWrapped("- Have an equipment in which your chara can tank mobs, ~10 levels higher than levequest is usually good");
-        ImGuiEx.TextWrapped("- BossMod's AI can be used to avoid AOE");
-        ImGui.SetNextItemWidth(200f);
-        ImGuiEx.EnumCombo("Key to spam for attack", ref C.Key);
-        ImGui.SetNextItemWidth(100f);
-        ImGui.InputInt("Stop upon reaching this amount of allowances", ref C.StopAt);
-        ImGui.Checkbox("Allow accepting multiple levequests", ref C.AllowMultiple);
-        ImGui.Checkbox("Allow flight", ref C.AllowFlight);
-        ImGuiEx.HelpMarker("Also must be enabled in TextAdvance's settings.\nIn general, less reliable than walking.", EColor.RedBright, FontAwesomeIcon.ExclamationTriangle.ToIconString());
+        new NuiBuilder().Section("Requirements").Widget(() =>
+        {
+            ImGuiEx.TextWrapped("- TextAdvance installed, enabled and \"Navigation\" enabled it it's options");
+            ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 7))]);
+            ImGuiEx.TextWrapped("- Vnavmesh installed and enabled");
+            ImGuiEx.PluginAvailabilityIndicator([new("vnavmesh")]);
+            ImGuiEx.TextWrapped("- Sloth Combo or any other rotation helper plugin that can put your ranged rotation on a single button, or rotation plugin that will auto-attack any targeted hostile monster (in this case, set your keybind to None). If you are overlevelled, you can probably get away with just spamming a single GCD skill. ");
+            ImGuiEx.TextWrapped("Additionally:");
+            ImGuiEx.TextWrapped("- Best results are achieved on ranged jobs");
+            ImGuiEx.TextWrapped("- Have an equipment in which your chara can tank mobs, ~10 levels higher than levequest is usually good");
+            ImGuiEx.TextWrapped("- BossMod's AI can be used to avoid AOE");
+        })
+        .Section("Settings").Widget(() =>
+        {
+            ImGui.Checkbox("Use single key press to attack mobs", ref C.EnableKeySpam);
+            ImGui.Indent();
+            ImGuiEx.Text("Select mode:");
+            ImGuiEx.RadioButtonBool("Press the key", "Execute hotbar slot", ref C.UseKeyMode);
+            ImGui.Indent();
+            if(C.UseKeyMode)
+            {
+                ImGui.SetNextItemWidth(200f);
+                ImGuiEx.EnumCombo("Key to spam for attack", ref C.Key);
+            }
+            else
+            {
+                ImGui.SetNextItemWidth(100f);
+                ImGui.InputInt("Hotbar index", ref C.HotbarSlot.Item1);
+                ImGui.SetNextItemWidth(100f);
+                ImGui.InputInt("Slot index", ref C.HotbarSlot.Item2);
+                ImGui.SetNextItemWidth(200f);
+                if(ImGui.BeginCombo("##sel", "Select..."))
+                {
+                    foreach(var x in Utils.GetHotbarActions())
+                    {
+                        if(ImGui.Selectable($"Hotbar {x.Hotbar} Slot {x.Slot}: {ExcelActionHelper.GetActionName(x.Action)}"))
+                        {
+                            C.HotbarSlot = (x.Hotbar, x.Slot);
+                        }
+                    }
+                    ImGui.EndCombo();
+                }
+            }
+            ImGui.Unindent();
+            ImGui.Unindent();
+            ImGui.SetNextItemWidth(100f);
+            ImGui.InputInt("Stop upon reaching this amount of allowances", ref C.StopAt);
+            ImGui.Checkbox("Allow accepting multiple levequests", ref C.AllowMultiple);
+            ImGui.Checkbox("Allow flight", ref C.AllowFlight);
+            ImGuiEx.HelpMarker("Also must be enabled in TextAdvance's settings.\nIn general, less reliable than walking.", EColor.RedBright, FontAwesomeIcon.ExclamationTriangle.ToIconString());
+        }).Draw();
     }
 
     private void DrawPlans()
@@ -73,15 +111,29 @@ public unsafe class MainWindow : ConfigWindow
         }
         else
         {
-            NuiTools.ButtonTabs("", [[new("Predefined", () => Readonly = true), new("Create your own", () => Readonly = false)]], child:false);
-            if(!Readonly && Player.TerritoryIntendedUse == TerritoryIntendedUseEnum.City_Area)
+            NuiTools.ButtonTabs("", [[new("Predefined", () => Readonly = true), new("Create your own", () => Readonly = false)]], child: false);
+            if(!Readonly)
             {
-                ImGuiEx.LineCentered("nocity", () => ImGuiEx.Text(EColor.RedBright, "City leves are unsupported."));
+                if(Player.TerritoryIntendedUse == TerritoryIntendedUseEnum.City_Area)
+                {
+                    ImGuiEx.LineCentered("nocity", () => ImGuiEx.Text(EColor.RedBright, "City leves are unsupported."));
+                }
+                else
+                {
+                    ImGuiEx.LineCentered("share", () =>
+                    {
+                        ImGuiEx.Text("Made a well working plan? Share it!");
+                        if(ImGuiEx.HoveredAndClicked())
+                        {
+                            ShellStart("https://github.com/NightmareXIV/Battlevest/issues/new");
+                        }
+                    });
+                }
             }
             if(Readonly) ImGuiEx.LineCentered("predef", () => ImGuiEx.Text(EColor.YellowBright, "Predefined plans can not be edited."));
             ImGuiEx.InputWithRightButtonsArea(() =>
             {
-                var plans = Readonly ? this.Presets : C.Plans;
+                var plans = Readonly ? Presets : C.Plans;
                 if(!plans.Contains(Selected)) Selected = null;
                 if(ImGui.BeginCombo("##leveselect", Selected?.GetName() ?? "No plan selected"))
                 {
@@ -165,7 +217,7 @@ public unsafe class MainWindow : ConfigWindow
                     ImGuiEx.SetNextItemFullWidth();
                     ImGui.InputTextWithHint("##name", Selected.GetName(), ref Selected.Name, 200);
                 }
-                ImGuiEx.LineCentered("npc",  () => ImGuiEx.Text($"NPC: {Selected.GetNPCName()} | Zone: {Selected.GetZoneName()}"));
+                ImGuiEx.LineCentered("npc", () => ImGuiEx.Text($"NPC: {Selected.GetNPCName()} | Zone: {Selected.GetZoneName()}"));
                 ImGuiEx.LineCentered("init", () =>
                 {
                     if(Player.Territory != Selected.Territory)
@@ -253,6 +305,7 @@ public unsafe class MainWindow : ConfigWindow
 
     private void DrawDebug()
     {
+        ImGuiEx.Text($"Remains leves: {QuestManager.Instance()->NumLeveAllowances}");
         if(ImGui.CollapsingHeader("HUD"))
         {
             ImGuiEx.Text($"Initial markers:");

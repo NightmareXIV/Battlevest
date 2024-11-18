@@ -12,12 +12,33 @@ using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
+using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.GeneratedSheets;
+using Action = System.Action;
 
 namespace Battlevest;
 public unsafe static class Utils
 {
+    public static List<(int Hotbar, int Slot, uint Action)> GetHotbarActions()
+    {
+        var ret = new List<(int Hotbar, int Slot, uint Action)>();
+        var m = RaptureHotbarModule.Instance();
+        for(int i = 0; i < m->Hotbars.Length; i++)
+        {
+            var b = m->Hotbars[i];
+            for(int q = 0; q < b.Slots.Length; q++)
+            {
+                var s = b.Slots[q];
+                if(s.CommandType == RaptureHotbarModule.HotbarSlotType.Action && s.CommandId != 0)
+                {
+                    ret.Add((i, q, s.CommandId));
+                }
+            }
+        }
+        return ret;
+    }
+
     public static void Stop()
     {
         S.Core.Enabled = false;
@@ -56,11 +77,19 @@ public unsafe static class Utils
         return false;
     }
 
+    public static void HandleTrade()
+    {
+        if(TryGetAddonByName<AtkUnitBase>("Trade", out var addon) && IsAddonReady(addon))
+        {
+            if(EzThrottler.Throttle("TradeClose")) Callback.Fire(addon, true, -1);
+        }
+    }
+
     public static bool HandleYesno()
     {
         if(TryGetAddonMaster<AddonMaster.SelectYesno>("SelectYesno", out var m) && m.IsAddonReady)
         {
-            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, Svc.Data.GetExcelSheet<Leve_LeveDirector>().GetRow(0).Value.ExtractText(true));
+            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, Svc.Data.GetExcelSheet<Leve_LeveDirector>().GetRow(0).Value.ExtractText(true), Svc.Data.GetExcelSheet<Leve_LeveDirector>().GetRow(1).Value.ExtractText(true));
             if(isLeveFinish || m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.ExtractText()))
             {
                 S.TextAdvanceIPC.Stop();
@@ -88,6 +117,7 @@ public unsafe static class Utils
         {
             return;
         }
+        EzThrottler.Reset("InitiateThrottle");
         var isMelee = Player.Object.GetRole().EqualsAny(CombatRole.Tank) || Player.Job.GetUpgradedJob().EqualsAny(Job.RPR, Job.VPR, Job.SAM, Job.DRG, Job.MNK, Job.NIN);
         var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492 && x.Radius < 50).OrderBy(x => Player.DistanceTo(new Vector3(x.X, x.Y, x.Z)));
         var validObjects = Svc.Objects.OfType<IBattleNpc>().Where(x => !plan.IgnoredMobs.Contains(x.NameId) && !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244 && EzThrottler.Check($"Ignore_{x.EntityId}")).OrderBy(Player.DistanceTo);
@@ -114,9 +144,48 @@ public unsafe static class Utils
                 }
                 else
                 {
-                    if(!Player.IsAnimationLocked && AgentMap.Instance()->IsPlayerMoving == 0 && C.Key != LimitedKeys.None && EzThrottler.Throttle("Keypress"))
+                    if(!Player.IsAnimationLocked && C.EnableKeySpam && AgentMap.Instance()->IsPlayerMoving == 0 && EzThrottler.Throttle("Keypress"))
                     {
-                        WindowsKeypress.SendKeypress(C.Key);
+                        if(C.UseKeyMode)
+                        {
+                            if(C.Key != LimitedKeys.None)
+                            {
+                                WindowsKeypress.SendKeypress(C.Key);
+                            }
+                        }
+                        else
+                        {
+                            var r = RaptureHotbarModule.Instance();
+                            if(C.HotbarSlot.Hotbar >= 0 && C.HotbarSlot.Hotbar < r->Hotbars.Length)
+                            {
+                                var h = r->Hotbars[C.HotbarSlot.Hotbar];
+                                if(C.HotbarSlot.Slot >= 0 && C.HotbarSlot.Slot < h.Slots.Length)
+                                {
+                                    var slot = h.Slots[C.HotbarSlot.Slot];
+                                    if(slot.CommandId != 0 && slot.CommandType != RaptureHotbarModule.HotbarSlotType.Empty)
+                                    {
+                                        r->ExecuteSlot(&slot);
+                                    }
+                                    else
+                                    {
+                                        error();
+                                    }
+                                }
+                                else
+                                {
+                                    error();
+                                }
+                            }
+                            else
+                            {
+                                error();
+                            }
+
+                            void error()
+                            {
+                                DuoLog.Error($"Selected hotbar slot is empty, please add action to hotbar {C.HotbarSlot.Hotbar} slot {C.HotbarSlot.Slot} or change it's index in plugin settings.");
+                            }
+                        }
                     }
                 }
                 EzThrottler.Throttle("TAPath", 1000, true);
@@ -257,23 +326,31 @@ public unsafe static class Utils
                 S.TaskManager.BeginStack();
                 try
                 {
-                    for(int i = 0; i < 10; i++)
-                    {
-                        S.TaskManager.Enqueue(() => SelectLeveInternal(selectedLeve.Name), $"Select {selectedLeve.Name}");
-                    }
+                    S.TaskManager.Enqueue((Action)(() => FrameThrottler.Throttle("ForceSelect", 10)));
                     S.TaskManager.Enqueue(() =>
                     {
-                        if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m))
+                        if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && TryGetAddonMaster<GuildLeve>(out var gm))
                         {
-                            if(EzThrottler.Throttle("Accept"))
+                            if(FrameThrottler.Check("ForceSelect") && gm.SelectedLeve == selectedLeve.Name)
                             {
-                                m.AcceptMap();
+                                if(EzThrottler.Throttle("Accept"))
+                                {
+                                    m.AcceptMap();
+                                }
                             }
-                            return true;
+                            else
+                            {
+                                SelectLeveInternal(selectedLeve.Name);
+                            }
                         }
-                        return false;
-                    }, $"Accept {selectedLeve.Name}");
-                    S.TaskManager.Enqueue(() => TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady && m.Levequests.Length != currentLeves, "Wait for acceptance");
+                        else
+                        {
+                            SelectLeveInternal(selectedLeve.Name);
+                            return false;
+                        }
+                        return TryGetAddonMaster<GuildLeve>("GuildLeve", out var mm) && mm.IsAddonReady && mm.Levequests.Length != currentLeves;
+                    }, $"Accept {selectedLeve.Name}", new(abortOnTimeout:false));
+                    S.TaskManager.Enqueue(() => TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady && m.Levequests.Length != currentLeves, "Wait for acceptance", new(abortOnTimeout: false));
                     if(QuestManager.Instance()->NumLeveAllowances > C.StopAt && C.AllowMultiple) S.TaskManager.Enqueue(RecursivelyAcceptLeves);
                 }
                 catch(Exception e)
@@ -299,6 +376,7 @@ public unsafe static class Utils
                     return true;
                 }
             }
+            return m.Levequests.Length > 0;
         }
         return false;
     }

@@ -15,4 +15,7 @@ public class Config : IEzConfig
     public int StopAt = 0;
     public bool AllowMultiple = true;
     public bool AllowFlight = false;
+    public bool EnableKeySpam = true;
+    public (int Hotbar, int Slot) HotbarSlot = (0, 0);
+    public bool UseKeyMode = true;
 }
