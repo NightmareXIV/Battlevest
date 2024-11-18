@@ -14,7 +14,7 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using Action = System.Action;
 
 namespace Battlevest;
@@ -52,7 +52,7 @@ public unsafe static class Utils
         {
             foreach(var x in m.Entries)
             {
-                if(x.Text.EqualsAny(Svc.Data.GetExcelSheet<Leve_GuildLeveAssignment>().GetRow(13).Value.ExtractText()))
+                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(13).Value.ExtractText()))
                 {
                     if(EzThrottler.Throttle("HandleSelectString"))
                     {
@@ -64,7 +64,7 @@ public unsafe static class Utils
             }
             foreach(var x in m.Entries)
             {
-                if(x.Text.EqualsAny(Svc.Data.GetExcelSheet<Leve_GuildLeveAssignment>().GetRow(1).Value.ExtractText(), Svc.Data.GetExcelSheet<Leve_GuildLeveAssignment>().GetRow(9).Value.ExtractText(), Svc.Data.GetExcelSheet<Leve_GuildLeveAssignment>().GetRow(10).Value.ExtractText(), Svc.Data.GetExcelSheet<Leve_GuildLeveAssignment>().GetRow(11).Value.ExtractText()))
+                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(1).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(9).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(10).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(11).Value.ExtractText()))
                 {
                     if(EzThrottler.Throttle("HandleSelectString"))
                     {
@@ -89,7 +89,7 @@ public unsafe static class Utils
     {
         if(TryGetAddonMaster<AddonMaster.SelectYesno>("SelectYesno", out var m) && m.IsAddonReady)
         {
-            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, Svc.Data.GetExcelSheet<Leve_LeveDirector>().GetRow(0).Value.ExtractText(true), Svc.Data.GetExcelSheet<Leve_LeveDirector>().GetRow(1).Value.ExtractText(true));
+            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, CustomSheet.LeveDirector.GetRow(0).Value.ExtractText(true), CustomSheet.LeveDirector.GetRow(1).Value.ExtractText(true));
             if(isLeveFinish || m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.ExtractText()))
             {
                 S.TextAdvanceIPC.Stop();

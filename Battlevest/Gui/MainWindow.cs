@@ -17,12 +17,12 @@ using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
 using FFXIVClientStructs.FFXIV.Client.Game.InstanceContent;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using NightmareUI;
 using NightmareUI.PrimaryUI;
 
 namespace Battlevest.Gui;
-public unsafe class MainWindow : ConfigWindow, IDisposable
+public unsafe class MainWindow : ConfigWindow
 {
     private ref LevePlan Selected => ref S.Core.Selected;
     public readonly List<LevePlan> Presets = [.. PredefinedPresets.GetList()];
@@ -243,7 +243,7 @@ public unsafe class MainWindow : ConfigWindow, IDisposable
                     ImGuiEx.LineCentered("sel2", () => ImGuiEx.Text(EColor.RedBright, "Only \"kill enemies\" leve types are supported"));
                 }
                 if(Readonly) ImGui.BeginDisabled();
-                foreach(var x in Svc.Data.GetExcelSheet<Leve>().Where(l => l.LevelLevemete.Value?.Object == Selected.NpcDataID))
+                foreach(var x in Svc.Data.GetExcelSheet<Leve>().Where(l => l.LevelLevemete.ValueNullable?.Object.RowId == Selected.NpcDataID))
                 {
                     if(x.ClassJobCategory.Value.IsJobInCategory(Job.PLD))
                     {
@@ -270,7 +270,7 @@ public unsafe class MainWindow : ConfigWindow, IDisposable
                 List<ImGuiEx.EzTableEntry> e = [];
                 foreach(var x in Selected.ForcedMobs)
                 {
-                    e.Add(new("Mob name", true, () => ImGuiEx.Text(Svc.Data.GetExcelSheet<BNpcName>().GetRow(x)?.Singular ?? x.ToString())), new("##del", () =>
+                    e.Add(new("Mob name", true, () => ImGuiEx.Text(Svc.Data.GetExcelSheet<BNpcName>().GetRowOrDefault(x)?.Singular.ToString() ?? x.ToString())), new("##del", () =>
                     {
                         if(!Readonly && ImGui.SmallButton($"Delete##f{x}"))
                         {
@@ -290,7 +290,7 @@ public unsafe class MainWindow : ConfigWindow, IDisposable
                 List<ImGuiEx.EzTableEntry> e = [];
                 foreach(var x in Selected.IgnoredMobs)
                 {
-                    e.Add(new("Mob name", true, () => ImGuiEx.Text(Svc.Data.GetExcelSheet<BNpcName>().GetRow(x)?.Singular ?? x.ToString())), new("##del", () =>
+                    e.Add(new("Mob name", true, () => ImGuiEx.Text(Svc.Data.GetExcelSheet<BNpcName>().GetRowOrDefault(x)?.Singular.ToString() ?? x.ToString())), new("##del", () =>
                     {
                         if(!Readonly && ImGui.SmallButton($"Delete##i{x}"))
                         {

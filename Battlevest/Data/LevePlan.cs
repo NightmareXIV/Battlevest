@@ -1,5 +1,5 @@
 ﻿using ECommons.ExcelServices;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,18 +30,18 @@ public class LevePlan
         }
         else if(LeveList.Count < 3)
         {
-            text = LeveList.Select(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x)?.Name.ExtractText() ?? "...").Print(", ");
+            text = LeveList.Select(x => Svc.Data.GetExcelSheet<Leve>().GetRowOrDefault(x)?.Name.ExtractText() ?? "...").Print(", ");
         }
         else
         {
-            text = LeveList[0..1].Select(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x)?.Name.ExtractText() ?? "...").Print(", ") + $" and {LeveList.Count - 2} more";
+            text = LeveList[0..1].Select(x => Svc.Data.GetExcelSheet<Leve>().GetRowOrDefault(x)?.Name.ExtractText() ?? "...").Print(", ") + $" and {LeveList.Count - 2} more";
         }
         return $"{ExcelTerritoryHelper.GetName(Territory)} - {GetNPCName()} - {text}";
     }
 
     public string GetNPCName()
     {
-        return Svc.Data.GetExcelSheet<ENpcResident>().GetRow(this.NpcDataID)?.Singular ?? $"Unk{this.NpcDataID:X8}";
+        return Svc.Data.GetExcelSheet<ENpcResident>().GetRowOrDefault(this.NpcDataID)?.Singular.ToString() ?? $"Unk{this.NpcDataID:X8}";
     }
 
     public string GetZoneName()

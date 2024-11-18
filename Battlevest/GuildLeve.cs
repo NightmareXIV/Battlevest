@@ -3,7 +3,7 @@ using ECommons.Automation;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Component.GUI;
-using Lumina.Excel.GeneratedSheets;
+using Lumina.Excel.Sheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -55,6 +55,8 @@ public unsafe class GuildLeve : AddonMasterBase<AddonGuildLeve>
         }
     }
 
+    public override string AddonDescription { get; }
+
     public class Levequest(GuildLeve master, int index)
     {
         public string Name;
@@ -62,14 +64,14 @@ public unsafe class GuildLeve : AddonMasterBase<AddonGuildLeve>
 
         public void Select()
         {
-            var quest = Svc.Data.GetExcelSheet<Leve>().FirstOrDefault(x => x.Name.ExtractText() == Name);
+            var quest = Svc.Data.GetExcelSheet<Leve>().FirstOrNull(x => x.Name.ExtractText() == Name);
             if(quest == null)
             {
                 PluginLog.Error($"Failed to select levequest, requested name not found: {Name}");
             }
             else
             {
-                Callback.Fire(master.Base, true, 13, index, (int)quest.RowId);
+                Callback.Fire(master.Base, true, 13, index, (int)quest?.RowId);
             }
         }
     }
