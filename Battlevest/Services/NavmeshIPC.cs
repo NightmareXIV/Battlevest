@@ -16,6 +16,7 @@ public class NavmeshIPC
     /// Vector3 from, Vector3 to, bool fly
     /// </summary>
     [EzIPC("Nav.Pathfind")] public readonly Func<Vector3, Vector3, bool, Task<List<Vector3>>> Pathfind;
+    [EzIPC("Nav.PathfindCancelAll")] public readonly Action PathfindCancelAll;
 
     [EzIPC("SimpleMove.PathfindAndMoveTo")] public readonly Func<Vector3, bool, bool> PathfindAndMoveTo;
     [EzIPC("SimpleMove.PathfindInProgress")] public readonly Func<bool> PathfindInProgress;

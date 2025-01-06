@@ -133,6 +133,11 @@ public unsafe class Core : IDisposable
                             S.Core.Enabled = false;
                             return;
                         }
+                        S.TaskManager.Enqueue(() =>
+                        {
+                            S.TextAdvanceIPC.Stop();
+                            S.NavmeshIPC.PathfindCancelAll();
+                        });
                         S.TaskManager.EnqueueTask(NeoTasks.ApproachObjectViaAutomove(npc, 6f));
                         S.TaskManager.EnqueueTask(NeoTasks.InteractWithObject(npc));
                         S.TaskManager.Enqueue(Utils.SelectBattleLeve);
