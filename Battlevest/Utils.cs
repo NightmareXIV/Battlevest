@@ -20,6 +20,7 @@ using Action = System.Action;
 namespace Battlevest;
 public unsafe static class Utils
 {
+    static bool SkipOnce = false;
     public static List<(int Hotbar, int Slot, uint Action)> GetHotbarActions()
     {
         var ret = new List<(int Hotbar, int Slot, uint Action)>();
@@ -329,29 +330,48 @@ public unsafe static class Utils
                     S.TaskManager.Enqueue((Action)(() => FrameThrottler.Throttle("ForceSelect", 10)));
                     S.TaskManager.Enqueue(() =>
                     {
-                        if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && TryGetAddonMaster<GuildLeve>(out var gm))
+                        if(QuestManager.Instance()->NumLeveAllowances > C.StopAt)
                         {
-                            if(FrameThrottler.Check("ForceSelect") && gm.SelectedLeve == selectedLeve.Name)
+                            if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && TryGetAddonMaster<GuildLeve>(out var gm))
                             {
-                                if(EzThrottler.Throttle("Accept"))
+                                if(FrameThrottler.Check("ForceSelect") && gm.SelectedLeve == selectedLeve.Name)
                                 {
-                                    m.AcceptMap();
+                                    if(EzThrottler.Throttle("Accept"))
+                                    {
+                                        m.AcceptMap();
+                                    }
+                                }
+                                else
+                                {
+                                    SelectLeveInternal(selectedLeve.Name);
                                 }
                             }
                             else
                             {
                                 SelectLeveInternal(selectedLeve.Name);
+                                return false;
                             }
+                            return TryGetAddonMaster<GuildLeve>("GuildLeve", out var mm) && mm.IsAddonReady && mm.Levequests.Length != currentLeves;
                         }
                         else
                         {
-                            SelectLeveInternal(selectedLeve.Name);
-                            return false;
+                            SkipOnce = true;
+                            if(!QuestManager.Instance()->LeveQuests.ToArray().Any(x => x.Flags == 0 && S.Core.Selected.LeveList.Contains(x.LeveId)))
+                            {
+                                S.Core.Enabled = false;
+                            }
+                            return true;
                         }
-                        return TryGetAddonMaster<GuildLeve>("GuildLeve", out var mm) && mm.IsAddonReady && mm.Levequests.Length != currentLeves;
                     }, $"Accept {selectedLeve.Name}", new(abortOnTimeout:false));
-                    S.TaskManager.Enqueue(() => TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady && m.Levequests.Length != currentLeves, "Wait for acceptance", new(abortOnTimeout: false));
-                    if(QuestManager.Instance()->NumLeveAllowances > C.StopAt && C.AllowMultiple) S.TaskManager.Enqueue(RecursivelyAcceptLeves);
+                    S.TaskManager.Enqueue(() => SkipOnce || TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady && m.Levequests.Length != currentLeves, "Wait for acceptance", new(abortOnTimeout: false));
+                    S.TaskManager.Enqueue((Action)(() => SkipOnce = false));
+                    if(QuestManager.Instance()->NumLeveAllowances > C.StopAt)
+                    {
+                        if(C.AllowMultiple)
+                        {
+                            S.TaskManager.Enqueue(RecursivelyAcceptLeves);
+                        }
+                    }
                 }
                 catch(Exception e)
                 {

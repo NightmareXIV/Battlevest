@@ -121,12 +121,6 @@ public unsafe class Core : IDisposable
                     if(npc() != null)
                     {
                         EzThrottler.Throttle("Wait", 5000, true);
-                        if(QuestManager.Instance()->NumLeveAllowances <= C.StopAt)
-                        {
-                            DuoLog.Warning("No more leve allowances!");
-                            S.Core.Enabled = false;
-                            return;
-                        }
                         if(StopNext)
                         {
                             StopNext = false;
@@ -136,8 +130,9 @@ public unsafe class Core : IDisposable
                         S.TaskManager.Enqueue(() =>
                         {
                             S.TextAdvanceIPC.Stop();
-                            S.NavmeshIPC.PathfindCancelAll();
+                            S.NavmeshIPC.Reload();
                         });
+                        S.TaskManager.Enqueue(() => S.NavmeshIPC.IsReady(), new(timeLimitMS: 5 * 60 * 1000));
                         S.TaskManager.EnqueueTask(NeoTasks.ApproachObjectViaAutomove(npc, 6f));
                         S.TaskManager.EnqueueTask(NeoTasks.InteractWithObject(npc));
                         S.TaskManager.Enqueue(Utils.SelectBattleLeve);
