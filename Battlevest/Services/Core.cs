@@ -109,6 +109,7 @@ public unsafe class Core : IDisposable
             }
             else
             {
+                if (C.UseBossMod) S.BossModIPC.ClearActive();
                 S.TextAdvanceIPC.Stop();
                 var currentLeves = QuestManager.Instance()->LeveQuests.ToArray().Where(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)).OrderBy(x => Utils.GetDistanceToLeve(x.LeveId));
                 if(currentLeves.Any())

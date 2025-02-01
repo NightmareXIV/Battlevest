@@ -18,4 +18,5 @@ public class Config : IEzConfig
     public bool EnableKeySpam = true;
     public (int Hotbar, int Slot) HotbarSlot = (0, 0);
     public bool UseKeyMode = true;
+    public bool UseBossMod = false;
 }
