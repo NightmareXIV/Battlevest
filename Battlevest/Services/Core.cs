@@ -104,6 +104,7 @@ public unsafe class Core : IDisposable
                 }
                 else
                 {
+                    if (C.UseBossMod) S.BossModIPC.SetActive("VBM Default");
                     Utils.HandleCombat(npc() != null && Player.DistanceTo(npc()) < 10f, Selected);
                 }
             }

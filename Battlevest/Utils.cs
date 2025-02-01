@@ -147,11 +147,7 @@ public unsafe static class Utils
                 {
                     if(!Player.IsAnimationLocked && C.EnableKeySpam && AgentMap.Instance()->IsPlayerMoving == 0 && EzThrottler.Throttle("Keypress"))
                     {
-                        if (C.UseBossMod)
-                        {
-                            S.BossModIPC.SetActive("VBM Default");
-                        }
-                        else if(C.UseKeyMode)
+                        if(C.UseKeyMode)
                         {
                             if(C.Key != LimitedKeys.None)
                             {
