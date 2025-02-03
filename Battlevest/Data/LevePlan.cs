@@ -19,6 +19,7 @@ public class LevePlan
     public HashSet<uint> IgnoredMobs = [];
     public HashSet<uint> ForcedMobs = [];
     public HashSet<uint> Favorite = [];
+    public bool StopOnGcCap = false;
 
     public string GetName()
     {

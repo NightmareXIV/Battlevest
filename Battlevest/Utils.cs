@@ -11,6 +11,7 @@ using ECommons.Interop;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
@@ -330,7 +331,7 @@ public unsafe static class Utils
                     S.TaskManager.Enqueue((Action)(() => FrameThrottler.Throttle("ForceSelect", 10)));
                     S.TaskManager.Enqueue(() =>
                     {
-                        if(QuestManager.Instance()->NumLeveAllowances > C.StopAt)
+                        if(CanAcceptMoreLeves())
                         {
                             if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && TryGetAddonMaster<GuildLeve>(out var gm))
                             {
@@ -365,7 +366,7 @@ public unsafe static class Utils
                     }, $"Accept {selectedLeve.Name}", new(abortOnTimeout:false));
                     S.TaskManager.Enqueue(() => SkipOnce || TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady && m.Levequests.Length != currentLeves, "Wait for acceptance", new(abortOnTimeout: false));
                     S.TaskManager.Enqueue((Action)(() => SkipOnce = false));
-                    if(QuestManager.Instance()->NumLeveAllowances > C.StopAt)
+                    if(CanAcceptMoreLeves())
                     {
                         if(C.AllowMultiple)
                         {
@@ -401,6 +402,16 @@ public unsafe static class Utils
         return false;
     }
 
+    public static bool CanAcceptMoreLeves()
+    {
+        var ret = QuestManager.Instance()->NumLeveAllowances > C.StopAt;
+        if(ret && S.Core.Selected.StopOnGcCap)
+        {
+            return GetRemainingSealsForGc() > 0;
+        }
+        return ret;
+    }
+
     public static float GetDistanceToLeve(uint leveId)
     {
         var leveName = Svc.Data.GetExcelSheet<Leve>().GetRow(leveId).Name.ExtractText();
@@ -409,5 +420,16 @@ public unsafe static class Utils
             return Player.DistanceTo(new Vector2(m.X, m.Z));
         }
         return 999999;
+    }
+
+    static int[] RankReq = [0, 2000, 3000, 4000, 5000, 6000];
+
+    public static int GetRemainingSealsForGc()
+    {
+        if(PlayerState.Instance()->GrandCompany == 0) return 0;
+        var gcRank = PlayerState.Instance()->GetGrandCompanyRank();
+        var skippedSeals = RankReq.Take(gcRank).Sum();
+        var currentSeals = InventoryManager.Instance()->GetCompanySeals(PlayerState.Instance()->GrandCompany);
+        return RankReq.Sum() - skippedSeals - (int)currentSeals;
     }
 }

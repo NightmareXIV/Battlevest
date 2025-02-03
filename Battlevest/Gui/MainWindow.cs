@@ -53,10 +53,9 @@ public unsafe class MainWindow : ConfigWindow
             ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 7))]);
             ImGuiEx.TextWrapped("- Vnavmesh installed and enabled");
             ImGuiEx.PluginAvailabilityIndicator([new("vnavmesh")]);
-            ImGuiEx.TextWrapped("- Sloth Combo or any other rotation helper plugin that can put your ranged rotation on a single button, or rotation plugin that will auto-attack any targeted hostile monster (in this case, set your keybind to None). If you are overlevelled, you can probably get away with just spamming a single GCD skill. ");
+            ImGuiEx.TextWrapped("- Wrath Combo or any other combo that can put significant part of your rotation to one button. If you are overlevelled, you can skip combo and just spam single GCD. Note that autorotation plugins will likely not work with Battlevest, so do not enable them. ");
             ImGuiEx.TextWrapped("Additionally:");
             ImGuiEx.TextWrapped("- Best results are achieved on ranged jobs");
-            ImGuiEx.TextWrapped("- Have an equipment in which your chara can tank mobs, ~10 levels higher than levequest is usually good");
             ImGuiEx.TextWrapped("- BossMod's AI can be used to avoid AOE");
         })
         .Section("Settings").Widget(() =>
@@ -255,6 +254,7 @@ public unsafe class MainWindow : ConfigWindow
                         ImGuiEx.CollectionCheckbox($"Lv. {x.ClassJobLevel} - {x.Name.ExtractText()}", x.RowId, Selected.LeveList);
                     }
                 }
+                ImGui.Checkbox("Stop upon reaching required seals amount to unlock Expert Delivery", ref Selected.StopOnGcCap);
                 if(Readonly) ImGui.EndDisabled();
             }
         }
