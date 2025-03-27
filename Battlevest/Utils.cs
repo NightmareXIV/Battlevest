@@ -54,7 +54,7 @@ public unsafe static class Utils
         {
             foreach(var x in m.Entries)
             {
-                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(13).Value.ExtractText()))
+                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(13).Value.GetText()))
                 {
                     if(EzThrottler.Throttle("HandleSelectString"))
                     {
@@ -66,7 +66,7 @@ public unsafe static class Utils
             }
             foreach(var x in m.Entries)
             {
-                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(1).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(9).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(10).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(11).Value.ExtractText()))
+                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(1).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(9).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(10).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(11).Value.GetText()))
                 {
                     if(EzThrottler.Throttle("HandleSelectString"))
                     {
@@ -89,10 +89,11 @@ public unsafe static class Utils
 
     public static bool HandleYesno()
     {
+        Svc.Data.GetExcelSheet<Addon>().GetRow(1).Text.ExtractText();
         if(TryGetAddonMaster<AddonMaster.SelectYesno>("SelectYesno", out var m) && m.IsAddonReady)
         {
-            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, CustomSheet.LeveDirector.GetRow(0).Value.ExtractText(true), CustomSheet.LeveDirector.GetRow(1).Value.ExtractText(true));
-            if(isLeveFinish || m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.ExtractText()))
+            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, CustomSheet.LeveDirector.GetRow(0).Value.GetText(true), CustomSheet.LeveDirector.GetRow(1).Value.GetText(true));
+            if(isLeveFinish || m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.GetText()))
             {
                 S.TextAdvanceIPC.Stop();
                 if(EzThrottler.Throttle("YesNo"))
@@ -132,8 +133,8 @@ public unsafe static class Utils
         if(combatTarget != null && combatTarget.IsTargetable)
         {
             if(!EzThrottler.Check($"ForcedMelee_{combatTarget.EntityId}")) isMelee = true;
-            var distance = isMelee ? 3f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -1.5f : 0f) : 20f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -5f : 0f);
-            if(Player.DistanceTo(combatTarget) < distance && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -2f : 0f)) < 10)
+            var distance = isMelee ? 3f + (AgentMap.Instance()->IsPlayerMoving ? -1.5f : 0f) : 20f + (AgentMap.Instance()->IsPlayerMoving ? -5f : 0f);
+            if(Player.DistanceTo(combatTarget) < distance && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving ? -2f : 0f)) < 10)
             {
                 if(Svc.Targets.Target != combatTarget) Svc.Targets.Target = combatTarget;
                 S.TextAdvanceIPC.Stop();
@@ -146,7 +147,7 @@ public unsafe static class Utils
                 }
                 else
                 {
-                    if(!Player.IsAnimationLocked && C.EnableKeySpam && AgentMap.Instance()->IsPlayerMoving == 0 && EzThrottler.Throttle("Keypress"))
+                    if(!Player.IsAnimationLocked && C.EnableKeySpam && AgentMap.Instance()->IsPlayerMoving == false && EzThrottler.Throttle("Keypress"))
                     {
                         if(C.UseKeyMode)
                         {
@@ -240,7 +241,7 @@ public unsafe static class Utils
         S.TaskManager.Enqueue(() =>
         {
             var sortedMarkers = AgentHUD.Instance()->MapMarkers.ToArray().OrderBy(x => Player.DistanceTo(new Vector2(x.X, x.Z)));
-            if(sortedMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).ExtractText() == Svc.Data.GetExcelSheet<Leve>().GetRow(questId).Name.ExtractText(), out var mark) || sortedMarkers.TryGetFirst(x => x.IconId == 60492, out mark))
+            if(sortedMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).GetText() == Svc.Data.GetExcelSheet<Leve>().GetRow(questId).Name.GetText(), out var mark) || sortedMarkers.TryGetFirst(x => x.IconId == 60492, out mark))
             {
                 var d2d = Player.DistanceTo(new Vector2(mark.X, mark.Z));
                 if(d2d > 30)
@@ -312,7 +313,7 @@ public unsafe static class Utils
         if(TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady)
         {
             var currentLeves = m.Levequests.Length;
-            var acceptableLeves = S.Core.Selected.LeveList.ToDictionary(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x).Name.ExtractText(), x => x);
+            var acceptableLeves = S.Core.Selected.LeveList.ToDictionary(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x).Name.GetText(), x => x);
             var preferredLeves = acceptableLeves.Where(x => S.Core.Selected.Favorite.Contains(x.Value)).ToDictionary();
             GuildLeve.Levequest selectedLeve = null;
             foreach(var l in m.Levequests)
@@ -414,8 +415,8 @@ public unsafe static class Utils
 
     public static float GetDistanceToLeve(uint leveId)
     {
-        var leveName = Svc.Data.GetExcelSheet<Leve>().GetRow(leveId).Name.ExtractText();
-        if(AgentHUD.Instance()->MapMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).ExtractText() == leveName, out var m))
+        var leveName = Svc.Data.GetExcelSheet<Leve>().GetRow(leveId).Name.GetText();
+        if(AgentHUD.Instance()->MapMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).GetText() == leveName, out var m))
         {
             return Player.DistanceTo(new Vector2(m.X, m.Z));
         }

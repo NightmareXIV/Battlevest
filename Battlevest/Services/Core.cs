@@ -28,8 +28,8 @@ public unsafe class Core : IDisposable
     private void Toasts_ErrorToast(ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
     {
         if(!Enabled) return;
-        if(AgentMap.Instance()->IsPlayerMoving == 1) return;
-        if(message.ExtractText().EqualsIgnoreCase(Svc.Data.GetExcelSheet<LogMessage>().GetRow(562).Text.ExtractText()))
+        if(AgentMap.Instance()->IsPlayerMoving) return;
+        if(message.GetText().EqualsIgnoreCase(Svc.Data.GetExcelSheet<LogMessage>().GetRow(562).Text.GetText()))
         {
             var fm = $"ForcedMelee_{Svc.Targets.Target?.EntityId}";
             var ignore = $"Ignore_{Svc.Targets.Target?.EntityId}";

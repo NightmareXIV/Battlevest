@@ -251,7 +251,7 @@ public unsafe class MainWindow : ConfigWindow
                         ImGui.PopFont();
                         ImGuiEx.Tooltip("Mark as favorite. Favorite leves will be prioritized for picking. Usually you'd want to make shortest leves favorite.");
                         ImGui.SameLine();
-                        ImGuiEx.CollectionCheckbox($"Lv. {x.ClassJobLevel} - {x.Name.ExtractText()}", x.RowId, Selected.LeveList);
+                        ImGuiEx.CollectionCheckbox($"Lv. {x.ClassJobLevel} - {x.Name.GetText()}", x.RowId, Selected.LeveList);
                     }
                 }
                 ImGui.Checkbox("Stop upon reaching required seals amount to unlock Expert Delivery", ref Selected.StopOnGcCap);
@@ -361,7 +361,7 @@ public unsafe class MainWindow : ConfigWindow
             {
                 if(x.LeveId != 0)
                 {
-                    ImGuiEx.Text($"Accepted leve: {Svc.Data.GetExcelSheet<Leve>().GetRow(x.LeveId).Name.ExtractText()}");
+                    ImGuiEx.Text($"Accepted leve: {Svc.Data.GetExcelSheet<Leve>().GetRow(x.LeveId).Name.GetText()}");
                     if(ImGui.Button("Initiate##" + x.LeveId.ToString()))
                     {
                         Utils.Initiate(x.LeveId);

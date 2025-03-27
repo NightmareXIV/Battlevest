@@ -23,7 +23,7 @@ public unsafe class GuildLeve : AddonMasterBase<AddonGuildLeve>
     }
 
     public uint NumEntries => Addon->AtkValues[25].UInt;
-    public string SelectedLeve => MemoryHelper.ReadSeStringNullTerminated((nint)Addon->AtkValues[1233].String).ExtractText();
+    public string SelectedLeve => MemoryHelper.ReadSeStringNullTerminated((nint)Addon->AtkValues[1233].String.Value).GetText();
 
     public Levequest[] Levequests
     {
@@ -38,11 +38,11 @@ public unsafe class GuildLeve : AddonMasterBase<AddonGuildLeve>
                 {
                     var leve = new Levequest(this, i)
                     {
-                        Name = MemoryHelper.ReadSeStringNullTerminated((nint)leveName.String).ExtractText()
+                        Name = MemoryHelper.ReadSeStringNullTerminated((nint)leveName.String.Value).GetText()
                     };
                     if(leveLevel.Type.EqualsAny(ValueType.String, ValueType.ManagedString, ValueType.String8))
                     {
-                        leve.Level = MemoryHelper.ReadSeStringNullTerminated((nint)leveLevel.String).ExtractText();
+                        leve.Level = MemoryHelper.ReadSeStringNullTerminated((nint)leveLevel.String.Value).GetText();
                     }
                     ret.Add(leve);
                 }
@@ -64,7 +64,7 @@ public unsafe class GuildLeve : AddonMasterBase<AddonGuildLeve>
 
         public void Select()
         {
-            var quest = Svc.Data.GetExcelSheet<Leve>().FirstOrNull(x => x.Name.ExtractText() == Name);
+            var quest = Svc.Data.GetExcelSheet<Leve>().FirstOrNull(x => x.Name.GetText() == Name);
             if(quest == null)
             {
                 PluginLog.Error($"Failed to select levequest, requested name not found: {Name}");
