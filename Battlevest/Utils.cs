@@ -21,6 +21,7 @@ using Action = System.Action;
 namespace Battlevest;
 public unsafe static class Utils
 {
+    static List<int> CheckedTabs = [];
     static bool SkipOnce = false;
     public static List<(int Hotbar, int Slot, uint Action)> GetHotbarActions()
     {
@@ -48,7 +49,24 @@ public unsafe static class Utils
         S.TextAdvanceIPC.Stop();
     }
 
-    public static bool SelectBattleLeve()
+    public static bool RecordAvailableLeveKinds()
+    {
+        var ret = false;
+        if(TryGetAddonMaster<AddonMaster.SelectString>("SelectString", out var m) && m.IsAddonReady)
+        {
+            foreach(var x in m.Entries)
+            {
+                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(1).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(9).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(10).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(11).Value.GetText()))
+                {
+                    ret = true;
+                    S.Core.LeveKinds.Add(x.Text);
+                }
+            }
+        }
+        return ret;
+    }
+
+    public static bool SelectBattleLeve(string kind)
     {
         if(TryGetAddonMaster<AddonMaster.SelectString>("SelectString", out var m) && m.IsAddonReady)
         {
@@ -66,7 +84,7 @@ public unsafe static class Utils
             }
             foreach(var x in m.Entries)
             {
-                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(1).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(9).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(10).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(11).Value.GetText()))
+                if(x.Text.EqualsAny(kind))
                 {
                     if(EzThrottler.Throttle("HandleSelectString"))
                     {
@@ -381,6 +399,7 @@ public unsafe static class Utils
                 }
                 S.TaskManager.InsertStack();
             }
+
             return true;
         }
         return false;

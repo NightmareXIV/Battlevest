@@ -19,6 +19,7 @@ public unsafe class Core : IDisposable
     public bool Enabled = false;
     public LevePlan Selected = null;
     public bool StopNext = false;
+    public List<string> LeveKinds = [];
     private Core()
     {
         Svc.Toasts.ErrorToast += Toasts_ErrorToast;
@@ -135,10 +136,36 @@ public unsafe class Core : IDisposable
                         S.TaskManager.Enqueue(() => S.NavmeshIPC.IsReady(), new(timeLimitMS: 5 * 60 * 1000));
                         S.TaskManager.EnqueueTask(NeoTasks.ApproachObjectViaAutomove(npc, 6f));
                         S.TaskManager.EnqueueTask(NeoTasks.InteractWithObject(npc));
-                        S.TaskManager.Enqueue(Utils.SelectBattleLeve);
 
-                        S.TaskManager.Enqueue(Utils.RecursivelyAcceptLeves);
+                        S.TaskManager.Enqueue(LeveKinds.Clear);
+                        S.TaskManager.Enqueue(Utils.RecordAvailableLeveKinds);
 
+                        S.TaskManager.Enqueue(() =>
+                        {
+                            foreach(var kind in this.LeveKinds)
+                            {
+                                S.TaskManager.InsertMulti(
+                                    new(() => Utils.SelectBattleLeve(kind)),
+                                    new(Utils.RecursivelyAcceptLeves),
+
+                                    new(() =>
+                                    {
+                                        if(TryGetAddonByName<AtkUnitBase>("GuildLeve", out var addon))
+                                        {
+                                            if(IsAddonReady(addon))
+                                            {
+                                                if(EzThrottler.Throttle("CloseGuildLeve")) Callback.Fire(addon, true, -1);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            return true;
+                                        }
+                                        return false;
+                                    })
+                                );
+                            }
+                        });
                         S.TaskManager.Enqueue(() =>
                         {
                             if(!IsOccupied()) return true;
