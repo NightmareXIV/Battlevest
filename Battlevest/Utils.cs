@@ -8,6 +8,7 @@ using ECommons.ExcelServices;
 using ECommons.GameFunctions;
 using ECommons.GameHelpers;
 using ECommons.Interop;
+using ECommons.MathHelpers;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -17,6 +18,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using Action = System.Action;
+using Callback = ECommons.Automation.Callback;
 
 namespace Battlevest;
 public unsafe static class Utils
@@ -140,7 +142,7 @@ public unsafe static class Utils
         }
         EzThrottler.Reset("InitiateThrottle");
         var isMelee = Player.Object.GetRole().EqualsAny(CombatRole.Tank) || Player.Job.GetUpgradedJob().EqualsAny(Job.RPR, Job.VPR, Job.SAM, Job.DRG, Job.MNK, Job.NIN);
-        var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492 && x.Radius < 50).OrderBy(x => Player.DistanceTo(new Vector3(x.X, x.Y, x.Z)));
+        var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492 && x.Radius < 50).OrderBy(x => Player.DistanceTo(x.Position));
         var validObjects = Svc.Objects.OfType<IBattleNpc>().Where(x => !plan.IgnoredMobs.Contains(x.NameId) && !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244 && EzThrottler.Check($"Ignore_{x.EntityId}")).OrderBy(Player.DistanceTo);
         //forced mobs first
         var combatTarget = validObjects.FirstOrDefault(x => plan.ForcedMobs.Contains(x.NameId));
@@ -232,7 +234,7 @@ public unsafe static class Utils
             if(!S.TextAdvanceIPC.IsBusy() && marks.Any() && EzThrottler.Throttle("TAPath"))
             {
                 var mark = marks.Last();
-                var dst = Player.DistanceTo(new Vector2(mark.X, mark.Z));
+                var dst = Player.DistanceTo(mark.Position.ToVector2());
                 if(dst > 20f)
                 {
                     S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
@@ -240,7 +242,7 @@ public unsafe static class Utils
                         Mount = forceMount || dst > 50f,
                         Fly = C.AllowFlight,
                         NoInteract = true,
-                        Position = new(mark.X, mark.Y, mark.Z)
+                        Position = mark.Position
                     }, 3f);
                 }
             }
@@ -258,10 +260,10 @@ public unsafe static class Utils
         if(!EzThrottler.Check("InitiateThrottle")) return;
         S.TaskManager.Enqueue(() =>
         {
-            var sortedMarkers = AgentHUD.Instance()->MapMarkers.ToArray().OrderBy(x => Player.DistanceTo(new Vector2(x.X, x.Z)));
+            var sortedMarkers = AgentHUD.Instance()->MapMarkers.ToArray().OrderBy(x => Player.DistanceTo(x.Position.ToVector2()));
             if(sortedMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).GetText() == Svc.Data.GetExcelSheet<Leve>().GetRow(questId).Name.GetText(), out var mark) || sortedMarkers.TryGetFirst(x => x.IconId == 60492, out mark))
             {
-                var d2d = Player.DistanceTo(new Vector2(mark.X, mark.Z));
+                var d2d = Player.DistanceTo(mark.Position.ToVector2());
                 if(d2d > 30)
                 {
                     if(!S.TextAdvanceIPC.IsBusy() && EzThrottler.Throttle("PreliminaryMoveTo", 1000))
@@ -272,7 +274,7 @@ public unsafe static class Utils
                             Fly = C.AllowFlight,
                             Mount = true,
                             NoInteract = true,
-                            Position = new Vector3(mark.X, 0, mark.Z),
+                            Position = new Vector3(mark.Position.X, 0, mark.Position.Z),
                         }, 3f);
                     }
                 }
@@ -310,7 +312,7 @@ public unsafe static class Utils
             if(Svc.Condition[ConditionFlag.BoundByDuty]) return true;
             if(TryGetAddonByName<AtkUnitBase>("GuildLeveDifficulty", out var addon) && IsAddonReady(addon))
             {
-                var btn = addon->GetButtonNodeById(7);
+                var btn = addon->GetComponentButtonById(7);
                 if(btn->IsEnabled && EzThrottler.Throttle("ALQ.Click"))
                 {
                     btn->ClickAddonButton(addon);
@@ -437,7 +439,7 @@ public unsafe static class Utils
         var leveName = Svc.Data.GetExcelSheet<Leve>().GetRow(leveId).Name.GetText();
         if(AgentHUD.Instance()->MapMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).GetText() == leveName, out var m))
         {
-            return Player.DistanceTo(new Vector2(m.X, m.Z));
+            return Player.DistanceTo(m.Position.ToVector2());
         }
         return 999999;
     }

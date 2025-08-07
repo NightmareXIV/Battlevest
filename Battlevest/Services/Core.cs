@@ -12,6 +12,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using Action = System.Action;
+using Callback = ECommons.Automation.Callback;
 
 namespace Battlevest.Services;
 public unsafe class Core : IDisposable

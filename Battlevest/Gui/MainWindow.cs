@@ -20,6 +20,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.Sheets;
 using NightmareUI;
 using NightmareUI.PrimaryUI;
+using Callback = ECommons.Automation.Callback;
 
 namespace Battlevest.Gui;
 public unsafe class MainWindow : ConfigWindow
@@ -312,13 +313,13 @@ public unsafe class MainWindow : ConfigWindow
             var markers = AgentHUD.Instance()->MapMarkers;
             foreach(var x in markers.Where(s => s.IconId == 60492))
             {
-                ImGuiEx.Text($"Coord: {x.X}, {x.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
+                ImGuiEx.Text($"Coord: {x.Position.X}, {x.Position.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
             }
             ImGuiEx.Text("All markers:");
 
             foreach(var x in markers)
             {
-                ImGuiEx.Text($"IconID: {x.IconId}, Coord: {x.X}, {x.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
+                ImGuiEx.Text($"IconID: {x.IconId}, Coord: {x.Position.X}, {x.Position.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
             }
         }
         if(ImGui.Button("Force melee on target")) EzThrottler.Throttle($"ForcedMelee_{Svc.Targets.Target?.EntityId}", 10000, true);
