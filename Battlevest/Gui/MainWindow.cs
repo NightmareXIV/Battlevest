@@ -61,6 +61,9 @@ public unsafe class MainWindow : ConfigWindow
         })
         .Section("Settings").Widget(() =>
         {
+            ImGui.Checkbox("Use BossMod for attacking mobs", ref C.UseBossMod);
+            ImGui.SameLine();
+            ImGuiEx.PluginAvailabilityIndicator([new("BossMod")]);
             ImGui.Checkbox("Use single key press to attack mobs", ref C.EnableKeySpam);
             ImGui.Indent();
             ImGuiEx.Text("Select mode:");
