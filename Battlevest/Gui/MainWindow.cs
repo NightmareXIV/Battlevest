@@ -54,13 +54,16 @@ public unsafe class MainWindow : ConfigWindow
             ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 7))]);
             ImGuiEx.TextWrapped("- Vnavmesh installed and enabled");
             ImGuiEx.PluginAvailabilityIndicator([new("vnavmesh")]);
-            ImGuiEx.TextWrapped("- Wrath Combo or any other combo that can put significant part of your rotation to one button. If you are overlevelled, you can skip combo and just spam single GCD. Note that autorotation plugins will likely not work with Battlevest, so do not enable them. ");
+            ImGuiEx.TextWrapped("- Wrath Combo or any other combo that can put significant part of your rotation to one button. If you are overlevelled, you can skip combo and just spam single GCD. Note that unspecified autorotation plugins will likely not work with Battlevest, so do not enable them. ");
             ImGuiEx.TextWrapped("Additionally:");
             ImGuiEx.TextWrapped("- Best results are achieved on ranged jobs");
             ImGuiEx.TextWrapped("- BossMod's AI can be used to avoid AOE");
         })
         .Section("Settings").Widget(() =>
         {
+            ImGui.Checkbox("Use RotationSolverReborn for attacking mobs", ref C.UseRSR);
+            ImGui.SameLine();
+            ImGuiEx.PluginAvailabilityIndicator([new("RotationSolver")]);
             ImGui.Checkbox("Use single key press to attack mobs", ref C.EnableKeySpam);
             ImGui.Indent();
             ImGuiEx.Text("Select mode:");

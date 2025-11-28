@@ -13,7 +13,7 @@ public class Battlevest : IDalamudPlugin
     public Battlevest(IDalamudPluginInterface pi)
     {
         P = this;
-        ECommonsMain.Init(pi, this);
+        ECommonsMain.Init(pi, this, Module.DalamudReflector);
         C = EzConfig.Init<Config>();
         SingletonServiceManager.Initialize(typeof(S));
     }
