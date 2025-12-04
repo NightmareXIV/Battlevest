@@ -106,6 +106,7 @@ public unsafe class Core : IDisposable
                 }
                 else
                 {
+                    if (C.UseBossMod) S.BossModIPC.SetActive("VBM Default");
                     if (C.UseRSR && RSR_IPCSubscriber.IsEnabled)
                     {
                         RSR_IPCSubscriber.RotationAuto();
@@ -115,6 +116,7 @@ public unsafe class Core : IDisposable
             }
             else
             {
+                if (C.UseBossMod) S.BossModIPC.ClearActive();
                 if (C.UseRSR && RSR_IPCSubscriber.IsEnabled)
                 {
                     RSR_IPCSubscriber.RotationStop();

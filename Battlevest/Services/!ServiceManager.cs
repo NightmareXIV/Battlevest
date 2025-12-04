@@ -14,4 +14,5 @@ public static class S
     public static TaskManager TaskManager;
     public static MainWindow MainWindow;
     public static CommandManager CommandManager;
+    public static BossModIPC BossModIPC;
 }

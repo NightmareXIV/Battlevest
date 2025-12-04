@@ -61,6 +61,9 @@ public unsafe class MainWindow : ConfigWindow
         })
         .Section("Settings").Widget(() =>
         {
+            ImGui.Checkbox("Use BossMod for attacking mobs", ref C.UseBossMod);
+            ImGui.SameLine();
+            ImGuiEx.PluginAvailabilityIndicator([new("BossMod")]);
             ImGui.Checkbox("Use RotationSolverReborn for attacking mobs", ref C.UseRSR);
             ImGui.SameLine();
             ImGuiEx.PluginAvailabilityIndicator([new("RotationSolver")]);
