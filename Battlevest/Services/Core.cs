@@ -106,11 +106,19 @@ public unsafe class Core : IDisposable
                 }
                 else
                 {
+                    if (C.UseRSR && RSR_IPCSubscriber.IsEnabled)
+                    {
+                        RSR_IPCSubscriber.RotationAuto();
+                    }
                     Utils.HandleCombat(npc() != null && Player.DistanceTo(npc()) < 10f, Selected);
                 }
             }
             else
             {
+                if (C.UseRSR && RSR_IPCSubscriber.IsEnabled)
+                {
+                    RSR_IPCSubscriber.RotationStop();
+                }
                 S.TextAdvanceIPC.Stop();
                 var currentLeves = QuestManager.Instance()->LeveQuests.ToArray().Where(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)).OrderBy(x => Utils.GetDistanceToLeve(x.LeveId));
                 if(currentLeves.Any())
