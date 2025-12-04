@@ -34,6 +34,10 @@ public class StatusWindow : Window
         {
             ImGuiEx.Text($"Processing tasks: {S.TaskManager.MaxTasks - S.TaskManager.NumQueuedTasks}/{S.TaskManager.MaxTasks}");
         }
+        if(S.Core.Selected.StopOnGcCap)
+        {
+            ImGuiEx.Text($"Seals Remaining: {Utils.GetRemainingSealsForGc():N0}");
+        }
     }
 
     public override bool DrawConditions()

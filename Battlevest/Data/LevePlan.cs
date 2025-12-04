@@ -19,6 +19,7 @@ public class LevePlan
     public HashSet<uint> IgnoredMobs = [];
     public HashSet<uint> ForcedMobs = [];
     public HashSet<uint> Favorite = [];
+    public bool StopOnGcCap = false;
 
     public string GetName()
     {
@@ -30,11 +31,11 @@ public class LevePlan
         }
         else if(LeveList.Count < 3)
         {
-            text = LeveList.Select(x => Svc.Data.GetExcelSheet<Leve>().GetRowOrDefault(x)?.Name.ExtractText() ?? "...").Print(", ");
+            text = LeveList.Select(x => Svc.Data.GetExcelSheet<Leve>().GetRowOrDefault(x)?.Name.GetText() ?? "...").Print(", ");
         }
         else
         {
-            text = LeveList[0..1].Select(x => Svc.Data.GetExcelSheet<Leve>().GetRowOrDefault(x)?.Name.ExtractText() ?? "...").Print(", ") + $" and {LeveList.Count - 2} more";
+            text = LeveList[0..1].Select(x => Svc.Data.GetExcelSheet<Leve>().GetRowOrDefault(x)?.Name.GetText() ?? "...").Print(", ") + $" and {LeveList.Count - 2} more";
         }
         return $"{ExcelTerritoryHelper.GetName(Territory)} - {GetNPCName()} - {text}";
     }

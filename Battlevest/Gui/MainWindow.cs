@@ -20,6 +20,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using Lumina.Excel.Sheets;
 using NightmareUI;
 using NightmareUI.PrimaryUI;
+using Callback = ECommons.Automation.Callback;
 
 namespace Battlevest.Gui;
 public unsafe class MainWindow : ConfigWindow
@@ -53,10 +54,9 @@ public unsafe class MainWindow : ConfigWindow
             ImGuiEx.PluginAvailabilityIndicator([new("TextAdvance", new Version(3, 2, 3, 7))]);
             ImGuiEx.TextWrapped("- Vnavmesh installed and enabled");
             ImGuiEx.PluginAvailabilityIndicator([new("vnavmesh")]);
-            ImGuiEx.TextWrapped("- Sloth Combo or any other rotation helper plugin that can put your ranged rotation on a single button, or rotation plugin that will auto-attack any targeted hostile monster (in this case, set your keybind to None). If you are overlevelled, you can probably get away with just spamming a single GCD skill. ");
+            ImGuiEx.TextWrapped("- Wrath Combo or any other combo that can put significant part of your rotation to one button. If you are overlevelled, you can skip combo and just spam single GCD. Note that unspecified autorotation plugins will likely not work with Battlevest, so do not enable them. ");
             ImGuiEx.TextWrapped("Additionally:");
             ImGuiEx.TextWrapped("- Best results are achieved on ranged jobs");
-            ImGuiEx.TextWrapped("- Have an equipment in which your chara can tank mobs, ~10 levels higher than levequest is usually good");
             ImGuiEx.TextWrapped("- BossMod's AI can be used to avoid AOE");
         })
         .Section("Settings").Widget(() =>
@@ -64,6 +64,9 @@ public unsafe class MainWindow : ConfigWindow
             ImGui.Checkbox("Use BossMod for attacking mobs", ref C.UseBossMod);
             ImGui.SameLine();
             ImGuiEx.PluginAvailabilityIndicator([new("BossMod")]);
+            ImGui.Checkbox("Use RotationSolverReborn for attacking mobs", ref C.UseRSR);
+            ImGui.SameLine();
+            ImGuiEx.PluginAvailabilityIndicator([new("RotationSolver")]);
             ImGui.Checkbox("Use single key press to attack mobs", ref C.EnableKeySpam);
             ImGui.Indent();
             ImGuiEx.Text("Select mode:");
@@ -255,9 +258,10 @@ public unsafe class MainWindow : ConfigWindow
                         ImGui.PopFont();
                         ImGuiEx.Tooltip("Mark as favorite. Favorite leves will be prioritized for picking. Usually you'd want to make shortest leves favorite.");
                         ImGui.SameLine();
-                        ImGuiEx.CollectionCheckbox($"Lv. {x.ClassJobLevel} - {x.Name.ExtractText()}", x.RowId, Selected.LeveList);
+                        ImGuiEx.CollectionCheckbox($"Lv. {x.ClassJobLevel} - {x.Name.GetText()}", x.RowId, Selected.LeveList);
                     }
                 }
+                ImGui.Checkbox("Stop upon reaching required seals amount to unlock Expert Delivery", ref Selected.StopOnGcCap);
                 if(Readonly) ImGui.EndDisabled();
             }
         }
@@ -315,13 +319,13 @@ public unsafe class MainWindow : ConfigWindow
             var markers = AgentHUD.Instance()->MapMarkers;
             foreach(var x in markers.Where(s => s.IconId == 60492))
             {
-                ImGuiEx.Text($"Coord: {x.X}, {x.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
+                ImGuiEx.Text($"Coord: {x.Position.X}, {x.Position.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
             }
             ImGuiEx.Text("All markers:");
 
             foreach(var x in markers)
             {
-                ImGuiEx.Text($"IconID: {x.IconId}, Coord: {x.X}, {x.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
+                ImGuiEx.Text($"IconID: {x.IconId}, Coord: {x.Position.X}, {x.Position.Z}; radius: {x.Radius} [{MemoryHelper.ReadSeString(x.TooltipString)}]");
             }
         }
         if(ImGui.Button("Force melee on target")) EzThrottler.Throttle($"ForcedMelee_{Svc.Targets.Target?.EntityId}", 10000, true);
@@ -364,7 +368,7 @@ public unsafe class MainWindow : ConfigWindow
             {
                 if(x.LeveId != 0)
                 {
-                    ImGuiEx.Text($"Accepted leve: {Svc.Data.GetExcelSheet<Leve>().GetRow(x.LeveId).Name.ExtractText()}");
+                    ImGuiEx.Text($"Accepted leve: {Svc.Data.GetExcelSheet<Leve>().GetRow(x.LeveId).Name.GetText()}");
                     if(ImGui.Button("Initiate##" + x.LeveId.ToString()))
                     {
                         Utils.Initiate(x.LeveId);

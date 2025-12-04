@@ -8,18 +8,22 @@ using ECommons.ExcelServices;
 using ECommons.GameFunctions;
 using ECommons.GameHelpers;
 using ECommons.Interop;
+using ECommons.MathHelpers;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Client.UI.Misc;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using Action = System.Action;
+using Callback = ECommons.Automation.Callback;
 
 namespace Battlevest;
 public unsafe static class Utils
 {
+    static List<int> CheckedTabs = [];
     static bool SkipOnce = false;
     public static List<(int Hotbar, int Slot, uint Action)> GetHotbarActions()
     {
@@ -47,13 +51,30 @@ public unsafe static class Utils
         S.TextAdvanceIPC.Stop();
     }
 
-    public static bool SelectBattleLeve()
+    public static bool RecordAvailableLeveKinds()
+    {
+        var ret = false;
+        if(TryGetAddonMaster<AddonMaster.SelectString>("SelectString", out var m) && m.IsAddonReady)
+        {
+            foreach(var x in m.Entries)
+            {
+                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(1).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(9).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(10).Value.GetText(), CustomSheet.GuildLeveAssignment.GetRow(11).Value.GetText()))
+                {
+                    ret = true;
+                    S.Core.LeveKinds.Add(x.Text);
+                }
+            }
+        }
+        return ret;
+    }
+
+    public static bool SelectBattleLeve(string kind)
     {
         if(TryGetAddonMaster<AddonMaster.SelectString>("SelectString", out var m) && m.IsAddonReady)
         {
             foreach(var x in m.Entries)
             {
-                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(13).Value.ExtractText()))
+                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(13).Value.GetText()))
                 {
                     if(EzThrottler.Throttle("HandleSelectString"))
                     {
@@ -65,7 +86,7 @@ public unsafe static class Utils
             }
             foreach(var x in m.Entries)
             {
-                if(x.Text.EqualsAny(CustomSheet.GuildLeveAssignment.GetRow(1).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(9).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(10).Value.ExtractText(), CustomSheet.GuildLeveAssignment.GetRow(11).Value.ExtractText()))
+                if(x.Text.EqualsAny(kind))
                 {
                     if(EzThrottler.Throttle("HandleSelectString"))
                     {
@@ -88,10 +109,11 @@ public unsafe static class Utils
 
     public static bool HandleYesno()
     {
+        Svc.Data.GetExcelSheet<Addon>().GetRow(1).Text.ExtractText();
         if(TryGetAddonMaster<AddonMaster.SelectYesno>("SelectYesno", out var m) && m.IsAddonReady)
         {
-            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, CustomSheet.LeveDirector.GetRow(0).Value.ExtractText(true), CustomSheet.LeveDirector.GetRow(1).Value.ExtractText(true));
-            if(isLeveFinish || m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.ExtractText()))
+            var isLeveFinish = m.Text.ContainsAny(StringComparison.OrdinalIgnoreCase, CustomSheet.LeveDirector.GetRow(0).Value.GetText(true), CustomSheet.LeveDirector.GetRow(1).Value.GetText(true));
+            if(isLeveFinish || m.Text.EqualsAny(Svc.Data.GetExcelSheet<Addon>().GetRow(608).Text.GetText()))
             {
                 S.TextAdvanceIPC.Stop();
                 if(EzThrottler.Throttle("YesNo"))
@@ -120,7 +142,7 @@ public unsafe static class Utils
         }
         EzThrottler.Reset("InitiateThrottle");
         var isMelee = Player.Object.GetRole().EqualsAny(CombatRole.Tank) || Player.Job.GetUpgradedJob().EqualsAny(Job.RPR, Job.VPR, Job.SAM, Job.DRG, Job.MNK, Job.NIN);
-        var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492 && x.Radius < 50).OrderBy(x => Player.DistanceTo(new Vector3(x.X, x.Y, x.Z)));
+        var marks = AgentHUD.Instance()->MapMarkers.Where(x => x.IconId == 60492 && x.Radius < 50).OrderBy(x => Player.DistanceTo(x.Position));
         var validObjects = Svc.Objects.OfType<IBattleNpc>().Where(x => !plan.IgnoredMobs.Contains(x.NameId) && !x.IsDead && x.IsHostile() && x.Struct()->NamePlateIconId == 71244 && EzThrottler.Check($"Ignore_{x.EntityId}")).OrderBy(Player.DistanceTo);
         //forced mobs first
         var combatTarget = validObjects.FirstOrDefault(x => plan.ForcedMobs.Contains(x.NameId));
@@ -131,8 +153,8 @@ public unsafe static class Utils
         if(combatTarget != null && combatTarget.IsTargetable)
         {
             if(!EzThrottler.Check($"ForcedMelee_{combatTarget.EntityId}")) isMelee = true;
-            var distance = isMelee ? 3f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -1.5f : 0f) : 20f + (AgentMap.Instance()->IsPlayerMoving == 1 ? -5f : 0f);
-            if(Player.DistanceTo(combatTarget) < distance && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving == 1 ? -2f : 0f)) < 10)
+            var distance = isMelee ? 3f + (AgentMap.Instance()->IsPlayerMoving ? -1.5f : 0f) : 20f + (AgentMap.Instance()->IsPlayerMoving ? -5f : 0f);
+            if(Player.DistanceTo(combatTarget) < distance && Math.Abs(Player.Position.Y - combatTarget.Position.Y + (AgentMap.Instance()->IsPlayerMoving ? -2f : 0f)) < 10)
             {
                 if(Svc.Targets.Target != combatTarget) Svc.Targets.Target = combatTarget;
                 S.TextAdvanceIPC.Stop();
@@ -145,7 +167,7 @@ public unsafe static class Utils
                 }
                 else
                 {
-                    if(!Player.IsAnimationLocked && C.EnableKeySpam && AgentMap.Instance()->IsPlayerMoving == 0 && EzThrottler.Throttle("Keypress"))
+                    if(!Player.IsAnimationLocked && C.EnableKeySpam && AgentMap.Instance()->IsPlayerMoving == false && EzThrottler.Throttle("Keypress"))
                     {
                         if(C.UseKeyMode)
                         {
@@ -212,7 +234,7 @@ public unsafe static class Utils
             if(!S.TextAdvanceIPC.IsBusy() && marks.Any() && EzThrottler.Throttle("TAPath"))
             {
                 var mark = marks.Last();
-                var dst = Player.DistanceTo(new Vector2(mark.X, mark.Z));
+                var dst = Player.DistanceTo(mark.Position.ToVector2());
                 if(dst > 20f)
                 {
                     S.TextAdvanceIPC.EnqueueMoveTo2DPoint(new()
@@ -220,7 +242,7 @@ public unsafe static class Utils
                         Mount = forceMount || dst > 50f,
                         Fly = C.AllowFlight,
                         NoInteract = true,
-                        Position = new(mark.X, mark.Y, mark.Z)
+                        Position = mark.Position
                     }, 3f);
                 }
             }
@@ -238,10 +260,10 @@ public unsafe static class Utils
         if(!EzThrottler.Check("InitiateThrottle")) return;
         S.TaskManager.Enqueue(() =>
         {
-            var sortedMarkers = AgentHUD.Instance()->MapMarkers.ToArray().OrderBy(x => Player.DistanceTo(new Vector2(x.X, x.Z)));
-            if(sortedMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).ExtractText() == Svc.Data.GetExcelSheet<Leve>().GetRow(questId).Name.ExtractText(), out var mark) || sortedMarkers.TryGetFirst(x => x.IconId == 60492, out mark))
+            var sortedMarkers = AgentHUD.Instance()->MapMarkers.ToArray().OrderBy(x => Player.DistanceTo(x.Position.ToVector2()));
+            if(sortedMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).GetText() == Svc.Data.GetExcelSheet<Leve>().GetRow(questId).Name.GetText(), out var mark) || sortedMarkers.TryGetFirst(x => x.IconId == 60492, out mark))
             {
-                var d2d = Player.DistanceTo(new Vector2(mark.X, mark.Z));
+                var d2d = Player.DistanceTo(mark.Position.ToVector2());
                 if(d2d > 30)
                 {
                     if(!S.TextAdvanceIPC.IsBusy() && EzThrottler.Throttle("PreliminaryMoveTo", 1000))
@@ -252,7 +274,7 @@ public unsafe static class Utils
                             Fly = C.AllowFlight,
                             Mount = true,
                             NoInteract = true,
-                            Position = new Vector3(mark.X, 0, mark.Z),
+                            Position = new Vector3(mark.Position.X, 0, mark.Position.Z),
                         }, 3f);
                     }
                 }
@@ -290,7 +312,7 @@ public unsafe static class Utils
             if(Svc.Condition[ConditionFlag.BoundByDuty]) return true;
             if(TryGetAddonByName<AtkUnitBase>("GuildLeveDifficulty", out var addon) && IsAddonReady(addon))
             {
-                var btn = addon->GetButtonNodeById(7);
+                var btn = addon->GetComponentButtonById(7);
                 if(btn->IsEnabled && EzThrottler.Throttle("ALQ.Click"))
                 {
                     btn->ClickAddonButton(addon);
@@ -311,7 +333,7 @@ public unsafe static class Utils
         if(TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady)
         {
             var currentLeves = m.Levequests.Length;
-            var acceptableLeves = S.Core.Selected.LeveList.ToDictionary(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x).Name.ExtractText(), x => x);
+            var acceptableLeves = S.Core.Selected.LeveList.ToDictionary(x => Svc.Data.GetExcelSheet<Leve>().GetRow(x).Name.GetText(), x => x);
             var preferredLeves = acceptableLeves.Where(x => S.Core.Selected.Favorite.Contains(x.Value)).ToDictionary();
             GuildLeve.Levequest selectedLeve = null;
             foreach(var l in m.Levequests)
@@ -330,7 +352,7 @@ public unsafe static class Utils
                     S.TaskManager.Enqueue((Action)(() => FrameThrottler.Throttle("ForceSelect", 10)));
                     S.TaskManager.Enqueue(() =>
                     {
-                        if(QuestManager.Instance()->NumLeveAllowances > C.StopAt)
+                        if(CanAcceptMoreLeves())
                         {
                             if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && TryGetAddonMaster<GuildLeve>(out var gm))
                             {
@@ -365,7 +387,7 @@ public unsafe static class Utils
                     }, $"Accept {selectedLeve.Name}", new(abortOnTimeout:false));
                     S.TaskManager.Enqueue(() => SkipOnce || TryGetAddonMaster<GuildLeve>("GuildLeve", out var m) && m.IsAddonReady && m.Levequests.Length != currentLeves, "Wait for acceptance", new(abortOnTimeout: false));
                     S.TaskManager.Enqueue((Action)(() => SkipOnce = false));
-                    if(QuestManager.Instance()->NumLeveAllowances > C.StopAt)
+                    if(CanAcceptMoreLeves())
                     {
                         if(C.AllowMultiple)
                         {
@@ -379,6 +401,7 @@ public unsafe static class Utils
                 }
                 S.TaskManager.InsertStack();
             }
+
             return true;
         }
         return false;
@@ -401,13 +424,34 @@ public unsafe static class Utils
         return false;
     }
 
+    public static bool CanAcceptMoreLeves()
+    {
+        var ret = QuestManager.Instance()->NumLeveAllowances > C.StopAt;
+        if(ret && S.Core.Selected.StopOnGcCap)
+        {
+            return GetRemainingSealsForGc() > 0;
+        }
+        return ret;
+    }
+
     public static float GetDistanceToLeve(uint leveId)
     {
-        var leveName = Svc.Data.GetExcelSheet<Leve>().GetRow(leveId).Name.ExtractText();
-        if(AgentHUD.Instance()->MapMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).ExtractText() == leveName, out var m))
+        var leveName = Svc.Data.GetExcelSheet<Leve>().GetRow(leveId).Name.GetText();
+        if(AgentHUD.Instance()->MapMarkers.TryGetFirst(x => x.IconId == 60492 && MemoryHelper.ReadSeString(x.TooltipString).GetText() == leveName, out var m))
         {
-            return Player.DistanceTo(new Vector2(m.X, m.Z));
+            return Player.DistanceTo(m.Position.ToVector2());
         }
         return 999999;
+    }
+
+    static int[] RankReq = [0, 2000, 3000, 4000, 5000, 6000];
+
+    public static int GetRemainingSealsForGc()
+    {
+        if(PlayerState.Instance()->GrandCompany == 0) return 0;
+        var gcRank = PlayerState.Instance()->GetGrandCompanyRank();
+        var skippedSeals = RankReq.Take(gcRank).Sum();
+        var currentSeals = InventoryManager.Instance()->GetCompanySeals(PlayerState.Instance()->GrandCompany);
+        return RankReq.Sum() - skippedSeals - (int)currentSeals;
     }
 }

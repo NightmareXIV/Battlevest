@@ -12,6 +12,7 @@ using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 using FFXIVClientStructs.FFXIV.Component.GUI;
 using Lumina.Excel.Sheets;
 using Action = System.Action;
+using Callback = ECommons.Automation.Callback;
 
 namespace Battlevest.Services;
 public unsafe class Core : IDisposable
@@ -19,6 +20,7 @@ public unsafe class Core : IDisposable
     public bool Enabled = false;
     public LevePlan Selected = null;
     public bool StopNext = false;
+    public List<string> LeveKinds = [];
     private Core()
     {
         Svc.Toasts.ErrorToast += Toasts_ErrorToast;
@@ -28,8 +30,8 @@ public unsafe class Core : IDisposable
     private void Toasts_ErrorToast(ref Dalamud.Game.Text.SeStringHandling.SeString message, ref bool isHandled)
     {
         if(!Enabled) return;
-        if(AgentMap.Instance()->IsPlayerMoving == 1) return;
-        if(message.ExtractText().EqualsIgnoreCase(Svc.Data.GetExcelSheet<LogMessage>().GetRow(562).Text.ExtractText()))
+        if(AgentMap.Instance()->IsPlayerMoving) return;
+        if(message.GetText().EqualsIgnoreCase(Svc.Data.GetExcelSheet<LogMessage>().GetRow(562).Text.GetText()))
         {
             var fm = $"ForcedMelee_{Svc.Targets.Target?.EntityId}";
             var ignore = $"Ignore_{Svc.Targets.Target?.EntityId}";
@@ -105,12 +107,20 @@ public unsafe class Core : IDisposable
                 else
                 {
                     if (C.UseBossMod) S.BossModIPC.SetActive("VBM Default");
+                    if (C.UseRSR && RSR_IPCSubscriber.IsEnabled)
+                    {
+                        RSR_IPCSubscriber.RotationAuto();
+                    }
                     Utils.HandleCombat(npc() != null && Player.DistanceTo(npc()) < 10f, Selected);
                 }
             }
             else
             {
                 if (C.UseBossMod) S.BossModIPC.ClearActive();
+                if (C.UseRSR && RSR_IPCSubscriber.IsEnabled)
+                {
+                    RSR_IPCSubscriber.RotationStop();
+                }
                 S.TextAdvanceIPC.Stop();
                 var currentLeves = QuestManager.Instance()->LeveQuests.ToArray().Where(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)).OrderBy(x => Utils.GetDistanceToLeve(x.LeveId));
                 if(currentLeves.Any())
@@ -137,10 +147,36 @@ public unsafe class Core : IDisposable
                         S.TaskManager.Enqueue(() => S.NavmeshIPC.IsReady(), new(timeLimitMS: 5 * 60 * 1000));
                         S.TaskManager.EnqueueTask(NeoTasks.ApproachObjectViaAutomove(npc, 6f));
                         S.TaskManager.EnqueueTask(NeoTasks.InteractWithObject(npc));
-                        S.TaskManager.Enqueue(Utils.SelectBattleLeve);
 
-                        S.TaskManager.Enqueue(Utils.RecursivelyAcceptLeves);
+                        S.TaskManager.Enqueue(LeveKinds.Clear);
+                        S.TaskManager.Enqueue(Utils.RecordAvailableLeveKinds);
 
+                        S.TaskManager.Enqueue(() =>
+                        {
+                            foreach(var kind in this.LeveKinds)
+                            {
+                                S.TaskManager.InsertMulti(
+                                    new(() => Utils.SelectBattleLeve(kind)),
+                                    new(Utils.RecursivelyAcceptLeves),
+
+                                    new(() =>
+                                    {
+                                        if(TryGetAddonByName<AtkUnitBase>("GuildLeve", out var addon))
+                                        {
+                                            if(IsAddonReady(addon))
+                                            {
+                                                if(EzThrottler.Throttle("CloseGuildLeve")) Callback.Fire(addon, true, -1);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            return true;
+                                        }
+                                        return false;
+                                    })
+                                );
+                            }
+                        });
                         S.TaskManager.Enqueue(() =>
                         {
                             if(!IsOccupied()) return true;
