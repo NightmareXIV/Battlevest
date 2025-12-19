@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net9.0-windows7.0": {
+    "net10.0-windows7.0": {
       "DalamudPackager": {
         "type": "Direct",
         "requested": "[2.1.12, )",
@@ -14,7 +14,7 @@
       "nightmareui": {
         "type": "Project",
         "dependencies": {
-          "ECommons": "[3.0.0.18-api13, )"
+          "ECommons": "[3.1.0.5-stg, )"
         }
       }
     }

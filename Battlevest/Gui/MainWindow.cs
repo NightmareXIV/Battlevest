@@ -306,6 +306,10 @@ public unsafe class MainWindow : ConfigWindow
 
     private void DrawDebug()
     {
+        if(ImGuiEx.ArrowButton("1", ImGuiDir.Up)) DuoLog.Information("Up!");
+        ImGuiEx.ArrowButton("2", ImGuiDir.Down);
+        ImGuiEx.ArrowButton("3", ImGuiDir.Left);
+        ImGuiEx.ArrowButton("4", ImGuiDir.Right);
         ImGuiEx.Text($"Remains leves: {QuestManager.Instance()->NumLeveAllowances}");
         if(ImGui.CollapsingHeader("HUD"))
         {
