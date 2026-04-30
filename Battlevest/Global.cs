@@ -22,3 +22,5 @@ global using System.Threading.Tasks;
 global using static Battlevest.Battlevest;
 global using static ECommons.GenericHelpers;
 global using CSFramework = FFXIVClientStructs.FFXIV.Client.System.Framework.Framework;
+
+global using Player = ECommons.GameHelpers.LegacyPlayer.Player;

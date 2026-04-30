@@ -14,7 +14,7 @@
       "nightmareui": {
         "type": "Project",
         "dependencies": {
-          "ECommons": "[3.1.0.5-stg, )"
+          "ECommons": "[3.2.0.6-stg, )"
         }
       }
     }
