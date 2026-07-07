@@ -4,3 +4,6 @@
 [submodule "NightmareUI"]
 	path = NightmareUI
 	url = https://github.com/NightmareXIV/NightmareUI
+[submodule "ECommons.IPC"]
+	path = ECommons.IPC
+	url = https://github.com/NightmareXIV/ECommons.IPC
