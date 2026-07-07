@@ -20,6 +20,7 @@ public class LevePlan
     public HashSet<uint> ForcedMobs = [];
     public HashSet<uint> Favorite = [];
     public bool StopOnGcCap = false;
+    public bool SingleUse = false;
 
     public string GetName()
     {

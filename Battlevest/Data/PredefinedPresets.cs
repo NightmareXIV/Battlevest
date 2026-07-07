@@ -28,5 +28,14 @@ public static class PredefinedPresets
         """
         {"NpcDataID":1004737,"Name":"[Stop on Expert Delivery Unlock] GC seals farm - Hawthorne Hut","Territory":152,"LeveList":[813,812,810,800,801,798],"Difficulty":null,"IgnoredMobs":[115],"ForcedMobs":[1123,1137,1143],"Favorite":[813,801],"StopOnGcCap":true}
         """,
+        """
+        {"NpcDataID":1000105,"Name":"Leves of Bentbranch - Trial Leve","Territory":148,"LeveList":[546],"Difficulty":null,"IgnoredMobs":[],"ForcedMobs":[206],"Favorite":[546],"StopOnGcCap":false,"SingleUse":true}
+        """,
+        """
+        {"NpcDataID":1001796,"Name":"Leves of Horizon - Trial Leve","Territory":140,"LeveList":[566],"Difficulty":null,"IgnoredMobs":[],"ForcedMobs":[1037],"Favorite":[566],"StopOnGcCap":false,"SingleUse":true}
+        """,
+        """
+        {"NpcDataID":1001788,"Name":"Leves of Swiftperch - Trial Leve","Territory":138,"LeveList":[556],"Difficulty":null,"IgnoredMobs":[],"ForcedMobs":[1081],"Favorite":[556],"StopOnGcCap":false,"SingleUse":true}
+        """
         ]).Select(EzConfig.DefaultSerializationFactory.Deserialize<LevePlan>).ToArray();
 }

@@ -25,6 +25,12 @@ public unsafe static class Utils
 {
     static List<int> CheckedTabs = [];
     static bool SkipOnce = false;
+
+    public static bool CanStart(this LevePlan plan)
+    {
+        return QuestManager.Instance()->LeveQuests.ToArray().Any(x => x.Flags == 0 && plan.LeveList.Contains(x.LeveId)) || (Svc.Objects.Any(x => x.DataId == plan.NpcDataID && x.IsTargetable && Player.DistanceTo(x) < 6));
+    }
+
     public static List<(int Hotbar, int Slot, uint Action)> GetHotbarActions()
     {
         var ret = new List<(int Hotbar, int Slot, uint Action)>();

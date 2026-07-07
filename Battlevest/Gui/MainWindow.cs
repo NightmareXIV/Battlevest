@@ -58,6 +58,7 @@ public unsafe class MainWindow : ConfigWindow
             ImGuiEx.TextWrapped("Additionally:");
             ImGuiEx.TextWrapped("- Best results are achieved on ranged jobs");
             ImGuiEx.TextWrapped("- BossMod's AI can be used to avoid AOE");
+            ImGui.Checkbox("Automatically complete trial levequests if picked up by Questionable", ref C.IntegrateWithQst);
         })
         .Section("Settings").Widget(() =>
         {
@@ -230,7 +231,7 @@ public unsafe class MainWindow : ConfigWindow
                     {
                         ImGuiEx.Text(EColor.RedBright, "Current zone is inappropriate for this plan");
                     }
-                    else if(QuestManager.Instance()->LeveQuests.ToArray().Any(x => x.Flags == 0 && Selected.LeveList.Contains(x.LeveId)) || (Svc.Objects.Any(x => x.DataId == Selected.NpcDataID && x.IsTargetable && Player.DistanceTo(x) < 6)))
+                    else if(Selected.CanStart())
                     {
                         if(ImGuiEx.IconButtonWithText(FontAwesomeIcon.Play, "Begin", Selected.LeveList.Count > 0))
                         {

@@ -20,4 +20,5 @@ public class Config : IEzConfig
     public bool UseKeyMode = true;
     public bool UseBossMod = false;
     public bool UseRSR = false;
+    public bool IntegrateWithQst = true;
 }

@@ -11,10 +11,16 @@
       "ecommons": {
         "type": "Project"
       },
+      "ecommons.ipc": {
+        "type": "Project",
+        "dependencies": {
+          "ECommons": "[3.2.0.11, )"
+        }
+      },
       "nightmareui": {
         "type": "Project",
         "dependencies": {
-          "ECommons": "[3.2.0.18, )"
+          "ECommons": "[3.2.1.15, )"
         }
       }
     }

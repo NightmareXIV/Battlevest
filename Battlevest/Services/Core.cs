@@ -5,6 +5,7 @@ using ECommons.Automation.NeoTaskManager.Tasks;
 using ECommons.EzEventManager;
 using ECommons.EzSharedDataManager;
 using ECommons.GameHelpers;
+using ECommons.IPC;
 using ECommons.Throttlers;
 using ECommons.UIHelpers.AddonMasterImplementations;
 using FFXIVClientStructs.FFXIV.Client.Game;
@@ -69,6 +70,41 @@ public unsafe class Core : IDisposable
     {
         if(!Enabled)
         {
+            if(C.IntegrateWithQst && !S.TaskManager.IsBusy)
+            {
+                process(148, 220, 546);
+                process(140, 687, 566);
+                process(138, 693, 556);
+                static void process(int territory, uint questId, int leveId)
+                {
+                    if(Svc.ClientState.TerritoryType == territory && !QuestManager.IsQuestComplete(questId) && ECommonsIPC.Questionable.GetCurrentQuestId() == questId.ToString() && EzThrottler.Throttle("BeginQuest", 5000))
+                    {
+                        var plan = S.MainWindow.Presets.First(x => x.LeveList.FirstOrDefault() == leveId);
+                        if(plan.CanStart())
+                        {
+                            S.TaskManager.Enqueue(() =>
+                        {
+                            if(TryGetAddonMaster<AddonMaster.JournalDetail>("JournalDetail", out var m) && TryGetAddonMaster<GuildLeve>(out var gm) && m.IsAddonReady && gm.IsAddonReady)
+                            {
+                                if(EzThrottler.Throttle("Accept", 1500))
+                                {
+                                    m.AcceptMap();
+                                    return true;
+                                }
+                            }
+                            return false;
+                        }, new(timeLimitMS: 20000, abortOnTimeout: false));
+                            S.TaskManager.Enqueue(() => !IsOccupied());
+                            S.TaskManager.Enqueue(() =>
+                            {
+                                S.Core.Selected = plan;
+                                S.Core.StopNext = false;
+                                S.Core.Enabled = true;
+                            });
+                        }
+                    }
+                }
+            }
             if(ExternalControl)
             {
                 RelinquishExternalControl();
@@ -139,6 +175,7 @@ public unsafe class Core : IDisposable
                             S.Core.Enabled = false;
                             return;
                         }
+                        if(Selected.SingleUse) StopNext = true;
                         S.TaskManager.Enqueue(() =>
                         {
                             S.TextAdvanceIPC.Stop();
