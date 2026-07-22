@@ -141,7 +141,7 @@ public unsafe class MainWindow : ConfigWindow
             ImGuiEx.InputWithRightButtonsArea(() =>
             {
                 var plans = Readonly ? Presets : C.Plans;
-                if(!plans.Contains(Selected)) Selected = null;
+                if(!plans.Contains(Selected) && !S.Core.Enabled) Selected = null;
                 if(ImGui.BeginCombo("##leveselect", Selected?.GetName() ?? "No plan selected"))
                 {
                     foreach(var x in plans.Where(x => Player.Territory == x.Territory))

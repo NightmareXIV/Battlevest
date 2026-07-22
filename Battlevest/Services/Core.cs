@@ -93,12 +93,12 @@ public unsafe class Core : IDisposable
                                 }
                             }
                             return false;
-                        }, new(timeLimitMS: 20000, abortOnTimeout: false));
+                        }, new(timeLimitMS: 20000, abortOnTimeout: true));
                             S.TaskManager.Enqueue(() => !IsOccupied());
                             S.TaskManager.Enqueue(() =>
                             {
                                 S.Core.Selected = plan;
-                                S.Core.StopNext = false;
+                                S.Core.StopNext = true;
                                 S.Core.Enabled = true;
                             });
                         }
@@ -169,6 +169,11 @@ public unsafe class Core : IDisposable
                     if(npc() != null)
                     {
                         EzThrottler.Throttle("Wait", 5000, true);
+                        S.TaskManager.Enqueue(() =>
+                        {
+                            S.TextAdvanceIPC.Stop();
+                            S.NavmeshIPC.Reload();
+                        });
                         if(StopNext)
                         {
                             StopNext = false;
@@ -176,11 +181,6 @@ public unsafe class Core : IDisposable
                             return;
                         }
                         if(Selected.SingleUse) StopNext = true;
-                        S.TaskManager.Enqueue(() =>
-                        {
-                            S.TextAdvanceIPC.Stop();
-                            S.NavmeshIPC.Reload();
-                        });
                         S.TaskManager.Enqueue(() => S.NavmeshIPC.IsReady(), new(timeLimitMS: 5 * 60 * 1000));
                         S.TaskManager.EnqueueTask(NeoTasks.ApproachObjectViaAutomove(npc, 6f));
                         S.TaskManager.EnqueueTask(NeoTasks.InteractWithObject(npc));

@@ -36,6 +36,9 @@ public static class PredefinedPresets
         """,
         """
         {"NpcDataID":1001788,"Name":"Leves of Swiftperch - Trial Leve","Territory":138,"LeveList":[556],"Difficulty":null,"IgnoredMobs":[],"ForcedMobs":[1081],"Favorite":[556],"StopOnGcCap":false,"SingleUse":true}
+        """,
+        """
+        {"NpcDataID":1004344,"Name":"Leves of Costa del sol - Trial Leve","Territory":137,"LeveList":[629],"Difficulty":null,"IgnoredMobs":[],"ForcedMobs":[],"Favorite":[629],"StopOnGcCap":false,"SingleUse":true}
         """
         ]).Select(EzConfig.DefaultSerializationFactory.Deserialize<LevePlan>).ToArray();
 }

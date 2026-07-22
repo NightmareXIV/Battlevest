@@ -15,4 +15,5 @@ public static class S
     public static MainWindow MainWindow;
     public static CommandManager CommandManager;
     public static BossModIPC BossModIPC;
+    public static IPCProvider IPCProvider;
 }
